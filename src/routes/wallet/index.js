@@ -20,7 +20,19 @@ const { checkWalletOwner } = require("../../utils/checkAuth");
 
 const router = express.Router();
 
-// root: creates a new wallet for the soliciting user
+// GET root: gets all the wallets of a user
+router.get("/", async (req, res) => {
+  try {
+    const { id: userId, } = req.token;
+
+    const user_wallets = await wallets.getUserWallets(userId);
+
+    res.send(user_wallets);
+
+  } catch (exception) { errorHandler.sendHttpError(res, exception); }
+});
+
+// POST root: creates a new wallet for the soliciting user
 router.post("/", async (req, res) => {
   try {
     const { id: userId, } = req.token;

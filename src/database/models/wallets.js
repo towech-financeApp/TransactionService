@@ -76,6 +76,17 @@ module.exports.getById = async (walletId) => {
   return response.rows[0];
 };
 
+/** getUserWallets
+ * Gets all the wallets of a user
+ * @param userId
+ * 
+ * @returns All the Wallets that belong to a user
+ */
+module.exports.getUserWallets = async (userId) => {
+  const response = await client.query(`SELECT * FROM Wallets where userId = ${userId}`);
+  return response.rows;
+};
+
 /** getTransactions
  * Gets the transactions from a wallet
  * @param walletID
