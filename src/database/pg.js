@@ -11,11 +11,11 @@ const pg = require('pg');
 const logger = require('../utils/logger');
 const { serverError } = require('../utils/errorhandler');
 
-const client = new pg.Client(process.env.USERSERVICE_DATABASE_URL);
+const client = new pg.Client(process.env.TRANSACTIONSERVICE_DATABASE_URL);
 client.connect()
   .then(() => logger.info('Connected to database'))
   .catch((err) => {
-    if (process.env.USERSERVICE_DATABASE_URL) {
+    if (process.env.TRANSACTIONSERVICE_DATABASE_URL) {
       logger.error(`${err}`);
       logger.info('Process exited with code 1');
     } else {
