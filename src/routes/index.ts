@@ -27,6 +27,10 @@ const processMessage = async (message: AmqpMessage): Promise<AmqpMessage> => {
   try {
     // Switches the message to execute the appropriate function
     switch (type) {
+      case 'add-Wallet':
+        return await addWallets(payload);
+      case 'get-Wallets':
+        return await getWallets(payload);
       default:
         logger.debug(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
