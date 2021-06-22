@@ -1,5 +1,8 @@
 #environments
-.env
+**.env
+
+# builds
+/lib/**
 
 #logs
 /logs/**
