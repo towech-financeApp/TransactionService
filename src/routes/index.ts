@@ -8,8 +8,10 @@ import { AmqpMessage } from 'tow96-amqpwrapper';
 
 import logger from 'tow96-logger';
 import addTransaction from './transaction/add-transaction';
-import addWallets from './wallet/add-Wallet';
+import deleteTransaction from './transaction/delete-Transaction';
+import editTransaction from './transaction/edit-Transaction';
 import getTransaction from './transaction/get-Transaction';
+import addWallets from './wallet/add-Wallet';
 import getWallets from './wallet/get-wallets';
 
 // routes
@@ -27,12 +29,20 @@ const processMessage = async (message: AmqpMessage): Promise<AmqpMessage> => {
   try {
     // Switches the message to execute the appropriate function
     switch (type) {
+      case 'add-Transaction':
+        return await addTransaction(payload);
+      case 'delete-Transaction':
+        return await deleteTransaction(payload);
+      case 'edit-Transaction':
+        return await editTransaction(payload);
+      case 'get-Transaction':
+        return await getTransaction(payload);
       case 'add-Wallet':
         return await addWallets(payload);
       case 'get-Wallets':
         return await getWallets(payload);
       default:
-        logger.debug(`Unsupported function type: ${type}`);
+        logger.warn(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
     }
   } catch (e) {
