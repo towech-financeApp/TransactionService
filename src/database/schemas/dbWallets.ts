@@ -5,8 +5,11 @@
  * Schema that describes the Wallet Schema and functions that use it
  */
 import mongoose from 'mongoose';
+mongoose.set('returnOriginal', false);
+
 import logger from 'tow96-logger';
 import { Wallet } from '../../Models';
+import DbTransactions from './dbTransactions';
 
 const WalletSchema = new mongoose.Schema({
   user_id: String,
@@ -36,6 +39,23 @@ export default class DbWallets {
     }).save();
 
     return response as Wallet;
+  };
+
+  /** delete
+   * Deletes a wallet and all the transactions within
+   *
+   * @param {string} walletId
+   *
+   * @returns The deleted transaction as confirmation and the count of deleted transactions
+   */
+  static delete = async (walletId: string): Promise<Wallet> => {
+    // Deletes the transactions
+    await DbTransactions.deleteAll(walletId);
+
+    // Deletes the wallet
+    const deletedWallet = await walletCollection.findByIdAndDelete(walletId);
+
+    return deletedWallet as Wallet;
   };
 
   /** getByName
@@ -73,6 +93,22 @@ export default class DbWallets {
   static getWallets = async (userId: string): Promise<Wallet[]> => {
     const response = await walletCollection.find({ user_id: userId });
     return response as Wallet[];
+  };
+
+  /** update
+   * Updates the contents of the given wallet.
+   *
+   * IMPORTANT: THE "MONEY" ATTRIBUTE MUST NOT BE UPDATED HERE
+   *
+   * @param {string} walletId Id of the wallet
+   * @param {Wallet} contents new content
+   *
+   * @returns The updated transaction
+   */
+  static update = async (walletId: string, contents: Wallet): Promise<Wallet> => {
+    const response: Wallet = await walletCollection.findByIdAndUpdate(walletId, { $set: { ...contents } });
+
+    return response;
   };
 
   /** updateAmount

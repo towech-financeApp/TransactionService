@@ -12,6 +12,9 @@ import deleteTransaction from './transaction/delete-Transaction';
 import editTransaction from './transaction/edit-Transaction';
 import getTransaction from './transaction/get-Transaction';
 import addWallets from './wallet/add-Wallet';
+import deleteWallet from './wallet/delete-Wallet';
+import editWallet from './wallet/edit-Wallet';
+import getWallet from './wallet/get-Wallet';
 import getWallets from './wallet/get-wallets';
 
 // routes
@@ -39,6 +42,12 @@ const processMessage = async (message: AmqpMessage): Promise<AmqpMessage> => {
         return await getTransaction(payload);
       case 'add-Wallet':
         return await addWallets(payload);
+      case 'delete-Wallet':
+        return await deleteWallet(payload);
+      case 'edit-Wallet':
+        return await editWallet(payload);
+      case 'get-Wallet':
+        return await getWallet(payload);
       case 'get-Wallets':
         return await getWallets(payload);
       default:

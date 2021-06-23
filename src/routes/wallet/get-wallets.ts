@@ -1,4 +1,4 @@
-/** register.js
+/** get-Wallets.js
  * Copyright (c) 2021, Jose Tow
  * All rights reserved.
  *

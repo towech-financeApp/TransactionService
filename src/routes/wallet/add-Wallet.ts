@@ -7,6 +7,7 @@
 import { AmqpMessage } from 'tow96-amqpwrapper';
 import logger from 'tow96-logger';
 import DbWallets from '../../database/schemas/dbWallets';
+import DbTransactions from '../../database/schemas/dbTransactions';
 
 // Models
 import { Wallet } from '../../Models';
@@ -19,8 +20,8 @@ const addWallets = async (message: Wallet): Promise<AmqpMessage> => {
     let errors = {};
 
     // Validates the wallet name
-    const walletValidation = await Validator.validateWalletName(message.name, message.user_id);
-    if (!walletValidation.valid) errors = { ...errors, ...walletValidation.errors };
+    const nameValidation = await Validator.validateWalletName(message.name, message.user_id);
+    if (!nameValidation.valid) errors = { ...errors, ...nameValidation.errors };
 
     // validates that the given amount is a valid number
     const amountValidation = Validator.validateAmount(message.money.toString());
@@ -31,7 +32,17 @@ const addWallets = async (message: Wallet): Promise<AmqpMessage> => {
 
     const newWallet = await DbWallets.add(message.user_id, message.name.trim());
 
-    // TODO: Add initial transaction
+    // Adds the initial transaction
+    DbTransactions.add(
+      newWallet.user_id,
+      newWallet._id,
+      'Initial transaction',
+      amountValidation.rounded,
+      newWallet.createdAt,
+    );
+
+    // Updates the wallet info that will be sent (it's already updated in the DB)
+    newWallet.money = amountValidation.rounded;
 
     return new AmqpMessage(newWallet, 'add-wallet', 200);
   } catch (err: any) {

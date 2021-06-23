@@ -1,7 +1,0 @@
-CREATE TABLE Wallets (
-  walletID BIGSERIAL NOT NULL PRIMARY KEY,
-  userID BIGSERIAL NOT NULL,
-  name varchar(40) NOT NULL,
-  money DECIMAL NOT NULL DEFAULT 0,
-  createdAt date NOT NULL DEFAULT NOW()
-)
