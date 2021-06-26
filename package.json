@@ -8,8 +8,7 @@
     "dev": "ts-node-dev --poll --respawn .",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "tslint -p tsconfig.json",
-    "start": "ts-node .",
-    "serve": "npm run build && node ./lib/index.js"
+    "start": "node dist/index.js"
   },
   "repository": {
     "type": "git",
@@ -23,12 +22,14 @@
   "homepage": "https://github.com/towech-financeApp/TransactionService#readme",
   "dependencies": {
     "dotenv": "^9.0.0",
+    "express": "^4.17.1",
     "mongoose": "^5.12.14",
     "tow96-amqpwrapper": "0.0.1",
     "tow96-logger": "0.0.2"
   },
   "devDependencies": {
     "@types/amqplib": "^0.8.0",
+    "@types/express": "^4.17.12",
     "@types/node": "^15.12.4",
     "prettier": "^2.3.1",
     "ts-node": "^10.0.0",

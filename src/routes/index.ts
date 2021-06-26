@@ -5,19 +5,19 @@
  * Index that holds all the "routes" of the worker
  */
 import { AmqpMessage } from 'tow96-amqpwrapper';
-
 import logger from 'tow96-logger';
+
+// routes
 import addTransaction from './transaction/add-transaction';
 import deleteTransaction from './transaction/delete-Transaction';
 import editTransaction from './transaction/edit-Transaction';
 import getTransaction from './transaction/get-Transaction';
+import getTransactions from './transaction/get-Transactions';
 import addWallets from './wallet/add-Wallet';
 import deleteWallet from './wallet/delete-Wallet';
 import editWallet from './wallet/edit-Wallet';
 import getWallet from './wallet/get-Wallet';
 import getWallets from './wallet/get-wallets';
-
-// routes
 
 /** processMessage
  * switch functions that calls the approppriate process for the worker
@@ -40,6 +40,8 @@ const processMessage = async (message: AmqpMessage): Promise<AmqpMessage> => {
         return await editTransaction(payload);
       case 'get-Transaction':
         return await getTransaction(payload);
+      case 'get-Transactions':
+        return await getTransactions(payload);
       case 'add-Wallet':
         return await addWallets(payload);
       case 'delete-Wallet':

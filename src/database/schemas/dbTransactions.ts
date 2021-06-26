@@ -74,7 +74,7 @@ export default class DbTransactions {
   /** deleteAll
    * Deletes all the transactions of a wallet
    *
-   * @param {string} transId
+   * @param {string} walletId
    *
    * @returns The deleted transaction as confirmation
    */
@@ -94,6 +94,19 @@ export default class DbTransactions {
   static getById = async (transId: string): Promise<Transaction> => {
     const response = await transactionCollection.findOne({ _id: transId });
     return response as Transaction;
+  };
+
+  /** getAll
+   * Gets all the transactions of a wallet
+   *
+   * @param {string} walletId
+   *
+   * @returns The transactions of the wallet
+   */
+  static getAll = async (walletId: string): Promise<Transaction[]> => {
+    const response = await transactionCollection.find({wallet_id: walletId});
+
+    return response as Transaction[];
   };
 
   /** update
