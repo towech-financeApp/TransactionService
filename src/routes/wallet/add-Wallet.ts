@@ -32,17 +32,19 @@ const addWallets = async (message: Wallet): Promise<AmqpMessage> => {
 
     const newWallet = await DbWallets.add(message.user_id, message.name.trim());
 
-    // Adds the initial transaction
-    DbTransactions.add(
-      newWallet.user_id,
-      newWallet._id,
-      'Initial transaction',
-      amountValidation.rounded,
-      newWallet.createdAt,
-    );
+    // Adds the initial transaction if there is money inserted
+    if (amountValidation.rounded > 0) {
+      DbTransactions.add(
+        newWallet.user_id,
+        newWallet._id,
+        'Initial transaction',
+        amountValidation.rounded,
+        newWallet.createdAt,
+      );
 
-    // Updates the wallet info that will be sent (it's already updated in the DB)
-    newWallet.money = amountValidation.rounded;
+      // Updates the wallet info that will be sent (it's already updated in the DB)
+      newWallet.money = amountValidation.rounded;
+    }
 
     return new AmqpMessage(newWallet, 'add-wallet', 200);
   } catch (err: any) {
