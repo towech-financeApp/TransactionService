@@ -8,7 +8,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Libraries
-import Queue, { AmqpMessage } from 'tow96-amqpwrapper';
+import Queue from 'tow96-amqpwrapper';
+import express from 'express';
 import logger from 'tow96-logger';
 import connectToMongo from './database/mongo';
 import processMessage from './routes';
@@ -56,6 +57,31 @@ const runWorker = async () => {
   );
 };
 
+// Sets up the server which is just a front-page that reports status (required for heroku)
+const startServer = async () => {
+
+  const app = express();
+  app.set('port', process.env.PORT || 3000);
+
+  app.get('/', (_, res) => {
+    res.send(`${process.env.NAME} is running`);
+  });
+
+  // Starts the server
+  app.listen(app.get('port'), () => {
+    logger.info(`Server running on port: ${app.get('port')}`);
+  });
+}
+
+
+// Runs the worker and front page
 runWorker().catch((err) => {
   logger.error(err);
 });
+
+startServer().catch((err: any) => {
+  logger.error(err);
+  logger.error('Exiting app with code 1');
+  process.exit(1);
+});
+

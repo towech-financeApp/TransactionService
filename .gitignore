@@ -2,7 +2,7 @@
 **.env
 
 # builds
-/lib/**
+/dist/**
 
 #logs
 /logs/**
