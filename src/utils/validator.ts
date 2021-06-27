@@ -76,16 +76,18 @@ export default class Validator {
     } else {
       // Checks if it is a valid date
       const splitDate = date.split('-');
+      let day;
+      let year;
 
       // Checks the month-date
       switch (splitDate[1]) {
         case '02':
-          const day = parseInt(splitDate[2], 10);
+          day = parseInt(splitDate[2], 10);
 
           if (day > 29) {
             errors.date = 'Invalid date';
           } else if (day === 29) {
-            const year = parseInt(splitDate[0], 10);
+            year = parseInt(splitDate[0], 10);
 
             if (!(year % 400 === 0 || (year % 4 === 0 && !(year % 100 === 0)))) {
               errors.date = 'Invalid date';

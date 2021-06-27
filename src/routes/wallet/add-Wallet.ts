@@ -5,7 +5,6 @@
  * Function that creates a wallet for a user
  */
 import { AmqpMessage } from 'tow96-amqpwrapper';
-import logger from 'tow96-logger';
 import DbWallets from '../../database/schemas/dbWallets';
 import DbTransactions from '../../database/schemas/dbTransactions';
 

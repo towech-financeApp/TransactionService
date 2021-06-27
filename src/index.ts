@@ -59,7 +59,6 @@ const runWorker = async () => {
 
 // Sets up the server which is just a front-page that reports status (required for heroku)
 const startServer = async () => {
-
   const app = express();
   app.set('port', process.env.PORT || 3000);
 
@@ -71,8 +70,7 @@ const startServer = async () => {
   app.listen(app.get('port'), () => {
     logger.info(`Server running on port: ${app.get('port')}`);
   });
-}
-
+};
 
 // Runs the worker and front page
 runWorker().catch((err) => {
@@ -84,4 +82,3 @@ startServer().catch((err: any) => {
   logger.error('Exiting app with code 1');
   process.exit(1);
 });
-

@@ -104,7 +104,7 @@ export default class DbTransactions {
    * @returns The transactions of the wallet
    */
   static getAll = async (walletId: string): Promise<Transaction[]> => {
-    const response = await transactionCollection.find({wallet_id: walletId});
+    const response = await transactionCollection.find({ wallet_id: walletId });
 
     return response as Transaction[];
   };

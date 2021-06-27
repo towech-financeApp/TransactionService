@@ -1,4 +1,4 @@
-/** index.js
+/** index.ts
  * Copyright (c) 2021, Jose Tow
  * All rights reserved.
  *
