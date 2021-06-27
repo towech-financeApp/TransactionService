@@ -1,3 +1,9 @@
+/** mongo.ts
+ * Copyright (c) 2021, Jose Tow
+ * All rights reserved.
+ *
+ * Function that handels connection to the mongo database
+ */
 import dotenv from 'dotenv';
 dotenv.config();
 

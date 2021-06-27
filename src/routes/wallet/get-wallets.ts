@@ -1,11 +1,10 @@
-/** get-Wallets.js
+/** get-Wallets.ts
  * Copyright (c) 2021, Jose Tow
  * All rights reserved.
  *
  * Function that returns all the wallets of a user
  */
 import { AmqpMessage } from 'tow96-amqpwrapper';
-import logger from 'tow96-logger';
 import DbWallets from '../../database/schemas/dbWallets';
 
 const getWallets = async (message: any): Promise<AmqpMessage> => {

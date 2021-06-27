@@ -1,4 +1,4 @@
-/** delete-Wallet.js
+/** delete-Wallet.ts
  * Copyright (c) 2021, Jose Tow
  * All rights reserved.
  *

@@ -1,4 +1,4 @@
-/** add-Transaction.ts
+/** get-Transaction.ts
  * Copyright (c) 2021, Jose Tow
  * All rights reserved.
  *
