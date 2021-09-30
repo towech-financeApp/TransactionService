@@ -103,9 +103,22 @@ export default class DbTransactions {
    *
    * @returns The transactions of the wallet
    */
-  static getAll = async (walletId: string): Promise<Transaction[]> => {
-    const response = await transactionCollection.find({ wallet_id: walletId });
+  static getAll = async (walletId: string, userId: string): Promise<Transaction[]> => {
+    let response: any;
 
+    if (walletId === '-1') {
+      const currDate = new Date();
+
+      response = await transactionCollection.find({
+        user_id: userId,
+        transactionDate: {
+          $gte: (new Date(currDate.getFullYear(), currDate.getMonth(), 1)).toISOString(),
+          $lt: (new Date(currDate.getFullYear(), currDate.getMonth() + 1, 0)).toISOString(),
+        },
+      });
+    } else {
+      response = await transactionCollection.find({ wallet_id: walletId });
+    }
     return response as Transaction[];
   };
 
