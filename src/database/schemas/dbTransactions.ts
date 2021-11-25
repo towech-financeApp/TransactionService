@@ -110,7 +110,8 @@ export default class DbTransactions {
     let response: any;
 
     const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
-    const endDate = new Date(startDate.setMonth(startDate.getMonth() + 1));
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1);
 
     // Creates the filter that will be used
     const filter: mongoose.FilterQuery<any> = {
