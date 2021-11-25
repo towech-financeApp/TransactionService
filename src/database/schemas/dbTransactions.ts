@@ -5,6 +5,7 @@
  * Schema that describes the Transaction Schema and functions that use it
  */
 import mongoose from 'mongoose';
+import logger from 'tow96-logger';
 mongoose.set('returnOriginal', false);
 
 import { Transaction } from '../../Models';
@@ -100,25 +101,29 @@ export default class DbTransactions {
    * Gets all the transactions of a wallet
    *
    * @param {string} walletId
+   * @param {string} userId
+   * @param {string} dataMonth
    *
    * @returns The transactions of the wallet
    */
-  static getAll = async (walletId: string, userId: string): Promise<Transaction[]> => {
+  static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Transaction[]> => {
     let response: any;
 
-    if (walletId === '-1') {
-      const currDate = new Date();
+    const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
+    const endDate = new Date(startDate.setMonth(startDate.getMonth() + 1));
 
-      response = await transactionCollection.find({
-        user_id: userId,
-        transactionDate: {
-          $gte: (new Date(currDate.getFullYear(), currDate.getMonth(), 1)).toISOString(),
-          $lt: (new Date(currDate.getFullYear(), currDate.getMonth() + 1, 0)).toISOString(),
-        },
-      });
-    } else {
-      response = await transactionCollection.find({ wallet_id: walletId });
-    }
+    // Creates the filter that will be used
+    const filter: mongoose.FilterQuery<any> = {
+      user_id: userId,
+      transactionDate: {
+        $gte: startDate.toISOString(),
+        $lt: endDate.toISOString(),
+      },
+    };
+    if (walletId !== '-1') filter.wallet_id = walletId;
+
+    response = await transactionCollection.find(filter);
+
     return response as Transaction[];
   };
 

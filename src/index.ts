@@ -44,8 +44,9 @@ const runWorker = async () => {
         const content = await processMessage(JSON.parse(msg.content.toString()));
 
         // reply if necessary
-        if (msg.properties.replyTo)
+        if (msg.properties.replyTo) {
           Queue.respondToQueue(channel, msg.properties.replyTo, msg.properties.correlationId, content);
+        }
 
         // Acknowledges the message
         channel.ack(msg);

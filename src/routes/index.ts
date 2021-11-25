@@ -34,24 +34,34 @@ const processMessage = async (message: AmqpMessage): Promise<AmqpMessage> => {
     switch (type) {
       case 'add-Transaction':
         return await addTransaction(payload);
+
       case 'delete-Transaction':
         return await deleteTransaction(payload);
+
       case 'edit-Transaction':
         return await editTransaction(payload);
+
       case 'get-Transaction':
         return await getTransaction(payload);
+
       case 'get-Transactions':
         return await getTransactions(payload);
+
       case 'add-Wallet':
         return await addWallets(payload);
+
       case 'delete-Wallet':
         return await deleteWallet(payload);
+
       case 'edit-Wallet':
         return await editWallet(payload);
+
       case 'get-Wallet':
         return await getWallet(payload);
+
       case 'get-Wallets':
         return await getWallets(payload);
+
       default:
         logger.warn(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
