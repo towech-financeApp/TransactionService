@@ -5,6 +5,7 @@
  * Function that changes the contents of a transaction
  */
 import { AmqpMessage } from 'tow96-amqpwrapper';
+import logger from 'tow96-logger';
 import DbTransactions from '../../database/schemas/dbTransactions';
 
 // Models
@@ -14,6 +15,8 @@ import { Transaction } from '../../Models';
 import Validator from '../../utils/validator';
 
 const editTransaction = async (message: Transaction): Promise<AmqpMessage> => {
+  logger.http(`Edit transaction: ${JSON.stringify(message)}`);
+
   // Checks if the requester is the owner of the transaction
   const transValid = await Validator.transactionOwnership(message.user_id, message._id);
   if (!transValid.valid) return AmqpMessage.errorMessage('Authentication Error', 403, transValid.errors);
@@ -62,11 +65,11 @@ const editTransaction = async (message: Transaction): Promise<AmqpMessage> => {
     }
   }
 
-  // If there aren't any changes, returns a 304 code
-  if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 304);
-
   // If there is an error, throws it
   if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
+
+  // If there aren't any changes, returns a 304 code
+  if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 304);
 
   // Updates the transaction
   const updatedTransaction = await DbTransactions.update(transValid.transaction, content);

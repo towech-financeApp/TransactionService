@@ -9,6 +9,7 @@ protocol via rabbitMQ.
 # Table of Contents
 1. [Installation](#Installation)
 2. [Environment](#Environment)
+3. [Future Improvements](#Future_Improvements)
 3. [Credits](#Credits)
 
 ## Installation
@@ -45,6 +46,11 @@ the recursive git submodules to the builpacks.
 ## Environment
 The repository has an [example environment](/env.sample) which contains all the 
 necessary env variables for this service to work.
+
+## Future_Improvements
+- [ ] Add categories for transactions
+- [ ] Add loan/debt mechanics
+- [ ] Add parent/daughter wallets
 
 ## Credits
 - Jose Tow [[@Tow96](https://github.com/Tow96)]
