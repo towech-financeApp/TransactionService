@@ -11,9 +11,17 @@ mongoose.set('returnOriginal', false);
 import { Transaction } from '../../Models';
 import DbWallets from './dbWallets';
 
+const CategorySchema = new mongoose.Schema({
+  parent_id: String,
+  name: String,
+  user_id: String,
+  type: String
+});
+
 const TransactionSchema = new mongoose.Schema({
   user_id: String,
   wallet_id: String,
+  category: {type: mongoose.Schema.Types.ObjectId, ref: 'Categories'},
   concept: String,
   amount: Number,
   transactionDate: Date,
@@ -21,6 +29,8 @@ const TransactionSchema = new mongoose.Schema({
 });
 
 const transactionCollection = mongoose.model('Transactions', TransactionSchema);
+mongoose.model('Categories', CategorySchema);
+
 
 // Functions to communicate with the collection ID
 export default class DbTransactions {
@@ -123,7 +133,7 @@ export default class DbTransactions {
     };
     if (walletId !== '-1') filter.wallet_id = walletId;
 
-    response = await transactionCollection.find(filter);
+    response = await transactionCollection.find(filter).populate('category');
 
     return response as Transaction[];
   };
