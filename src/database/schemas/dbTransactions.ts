@@ -5,10 +5,9 @@
  * Schema that describes the Transaction Schema and functions that use it
  */
 import mongoose from 'mongoose';
-import logger from 'tow96-logger';
 mongoose.set('returnOriginal', false);
 
-import { Transaction } from '../../Models';
+import { Category, Transaction } from '../../Models';
 import DbWallets from './dbWallets';
 
 const CategorySchema = new mongoose.Schema({
@@ -29,7 +28,7 @@ const TransactionSchema = new mongoose.Schema({
 });
 
 const transactionCollection = mongoose.model('Transactions', TransactionSchema);
-mongoose.model('Categories', CategorySchema);
+const categoryCollection = mongoose.model('Categories', CategorySchema);
 
 
 // Functions to communicate with the collection ID
@@ -51,18 +50,20 @@ export default class DbTransactions {
     concept: string,
     amount: number,
     transactionDate: Date,
+    category_id: string,
   ): Promise<Transaction> => {
-    const response = new transactionCollection({
+    const response = await (await new transactionCollection({
       user_id: userId,
       wallet_id: walletId,
       concept,
-      amount,
+      amount: Math.abs(amount),
       transactionDate,
+      category: category_id,
       createdAt: new Date().toISOString(),
-    }).save();
+    }).save()).populate('category').execPopulate();
 
     // Also updates the amount value of the wallet
-    DbWallets.updateAmount(walletId, amount);
+    DbWallets.updateAmount(walletId, amount, response.category.type);
 
     return response as Transaction;
   };
@@ -75,9 +76,9 @@ export default class DbTransactions {
    * @returns The deleted transaction as confirmation
    */
   static delete = async (transId: string): Promise<Transaction> => {
-    const response: Transaction = await transactionCollection.findByIdAndDelete({ _id: transId });
+    const response: Transaction = await transactionCollection.findByIdAndDelete({ _id: transId }).populate('category');
 
-    DbWallets.updateAmount(response.wallet_id, response.amount * -1);
+    DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
 
     return response;
   };
@@ -103,7 +104,7 @@ export default class DbTransactions {
    * @returns The transaction from the DB with the userId attached
    */
   static getById = async (transId: string): Promise<Transaction> => {
-    const response = await transactionCollection.findOne({ _id: transId });
+    const response = await transactionCollection.findOne({ _id: transId }).populate('category');
     return response as Transaction;
   };
 
@@ -138,6 +139,18 @@ export default class DbTransactions {
     return response as Transaction[];
   };
 
+  /** getCategory
+   * Gets a category, used for validation
+   *
+   * @param {string} category_id
+   *
+   * @returns The category if it exists
+   */
+  static getCategory = async (category_id: string): Promise<Category> => {
+    const response = await categoryCollection.findById(category_id);
+    return response as Category;
+  };
+
   /** update
    * Updates the contents of the given transaction.
    *
@@ -147,11 +160,11 @@ export default class DbTransactions {
    * @returns The updated transaction
    */
   static update = async (old: Transaction, contents: Transaction): Promise<Transaction> => {
-    const response: Transaction = await transactionCollection.findByIdAndUpdate(old._id, { $set: { ...contents } });
+    const response: Transaction = await transactionCollection.findByIdAndUpdate(old._id, { $set: { ...contents } }).populate('category');
 
     // Updates the old and new wallets
-    DbWallets.updateAmount(old.wallet_id, old.amount * -1);
-    DbWallets.updateAmount(response.wallet_id, response.amount);
+    DbWallets.updateAmount(old.wallet_id, old.amount * -1, old.category.type);
+    DbWallets.updateAmount(response.wallet_id, response.amount, response.category.type);
 
     return response;
   };

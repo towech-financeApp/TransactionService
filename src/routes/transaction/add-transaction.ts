@@ -5,6 +5,7 @@
  * Function that creates a transaction for a user
  */
 import { AmqpMessage } from 'tow96-amqpwrapper';
+import logger from 'tow96-logger';
 import DbTransactions from '../../database/schemas/dbTransactions';
 
 // Models
@@ -19,6 +20,10 @@ const addTransaction = async (message: Transaction): Promise<AmqpMessage> => {
   if (!walletValid.valid) return AmqpMessage.errorMessage('Authentication Error', 403, walletValid.errors);
 
   let errors = {};
+
+  // Validates if the category is valid
+  const validCategory = await Validator.validateCategory(message.category._id, message.user_id);
+  if (!validCategory.valid) errors = { ...errors, ...validCategory.errors };
 
   // Validates that the given amount is a valid number
   const validAmount = Validator.validateAmount(message.amount.toString());
@@ -41,6 +46,7 @@ const addTransaction = async (message: Transaction): Promise<AmqpMessage> => {
     message.concept.trim(),
     validAmount.rounded,
     message.transactionDate,
+    message.category._id,
   );
 
   return new AmqpMessage(response, 'add-Transaction', 200);

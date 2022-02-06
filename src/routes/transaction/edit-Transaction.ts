@@ -45,6 +45,15 @@ const editTransaction = async (message: Transaction): Promise<AmqpMessage> => {
     }
   }
 
+  // Checks if the category has changed
+  if (message.category._id) {
+    if (message.category._id !== transValid.transaction.category._id) {
+      const categoryValid = await Validator.validateCategory(message.category._id, transValid.transaction.user_id);
+      errors = { ...errors, ...categoryValid.errors };
+      content.category = message.category._id;
+    }
+  }
+
   // Checks if the amount is different
   if (message.amount) {
     const validAmount = Validator.validateAmount(message.amount.toString());

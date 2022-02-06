@@ -39,6 +39,7 @@ const addWallets = async (message: Wallet): Promise<AmqpMessage> => {
         'Initial transaction',
         amountValidation.rounded,
         newWallet.createdAt,
+        '61f9cd22f3bcff6edf3afe99',
       );
 
       // Updates the wallet info that will be sent (it's already updated in the DB)

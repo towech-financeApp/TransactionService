@@ -38,6 +38,33 @@ export default class Validator {
     };
   };
 
+  /** validateCategory
+   * Checks if a given category is valid
+   *
+   * @param {string} category_id
+   * @param {string} user_id
+   *
+   * @returns Valid: Boolean that confirms validity
+   * @returns errors: Object with all the errors
+   */
+  static validateCategory = async (category_id: string, user_id: string): Promise<{ valid: boolean; errors: any }> => {
+    const errors: any = {};
+
+    const dbCategory = await DbTransactions.getCategory(category_id);
+
+    if (!dbCategory) {
+      errors.category = "Category doesn't exist";
+    }
+    else if (dbCategory.user_id !== '-1' && dbCategory.user_id !== user_id) {
+      errors.category = 'Category does not belong to the user';
+    }
+
+    return {
+      errors,
+      valid: Object.keys(errors).length < 1,
+    };
+  };
+
   /** validateConcept
    * Checks if a given concept is valid
    *
@@ -45,7 +72,6 @@ export default class Validator {
    *
    * @returns Valid: Boolean that confirms validity
    * @returns errors: Object with all the errors
-   * @returns rounded: Rounded amount to 2 decimal places
    */
   static validateConcept = (concept: string): { valid: boolean; errors: any } => {
     const errors: any = {};

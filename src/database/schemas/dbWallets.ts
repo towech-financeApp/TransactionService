@@ -117,7 +117,8 @@ export default class DbWallets {
    * @param {number} amount number that will be added to the wallet
    *
    */
-  static updateAmount = async (walletId: string, amount: number): Promise<void> => {
-    await walletCollection.findOneAndUpdate({ _id: walletId }, { $inc: { money: amount } });
+  static updateAmount = async (walletId: string, amount: number, type: 'Income' | 'Expense'): Promise<void> => {
+    const value = type == 'Income' ? amount : (amount * -1);
+    await walletCollection.findOneAndUpdate({ _id: walletId }, { $inc: { money: value } });
   };
 }
