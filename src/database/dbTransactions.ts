@@ -7,20 +7,20 @@
 import mongoose from 'mongoose';
 mongoose.set('returnOriginal', false);
 
-import { Category, Transaction } from '../../Models';
+import { Objects } from '../Models';
 import DbWallets from './dbWallets';
 
 const CategorySchema = new mongoose.Schema({
   parent_id: String,
   name: String,
   user_id: String,
-  type: String
+  type: String,
 });
 
 const TransactionSchema = new mongoose.Schema({
   user_id: String,
   wallet_id: String,
-  category: {type: mongoose.Schema.Types.ObjectId, ref: 'Categories'},
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Categories' },
   concept: String,
   amount: Number,
   transactionDate: Date,
@@ -29,7 +29,6 @@ const TransactionSchema = new mongoose.Schema({
 
 const transactionCollection = mongoose.model('Transactions', TransactionSchema);
 const categoryCollection = mongoose.model('Categories', CategorySchema);
-
 
 // Functions to communicate with the collection ID
 export default class DbTransactions {
@@ -51,21 +50,25 @@ export default class DbTransactions {
     amount: number,
     transactionDate: Date,
     category_id: string,
-  ): Promise<Transaction> => {
-    const response = await (await new transactionCollection({
-      user_id: userId,
-      wallet_id: walletId,
-      concept,
-      amount: Math.abs(amount),
-      transactionDate,
-      category: category_id,
-      createdAt: new Date().toISOString(),
-    }).save()).populate('category').execPopulate();
+  ): Promise<Objects.Transaction> => {
+    const response = await (
+      await new transactionCollection({
+        user_id: userId,
+        wallet_id: walletId,
+        concept,
+        amount: Math.abs(amount),
+        transactionDate,
+        category: category_id,
+        createdAt: new Date().toISOString(),
+      }).save()
+    )
+      .populate('category')
+      .execPopulate();
 
     // Also updates the amount value of the wallet
     DbWallets.updateAmount(walletId, amount, response.category.type);
 
-    return response as Transaction;
+    return response as Objects.Transaction;
   };
 
   /** delete
@@ -75,8 +78,10 @@ export default class DbTransactions {
    *
    * @returns The deleted transaction as confirmation
    */
-  static delete = async (transId: string): Promise<Transaction> => {
-    const response: Transaction = await transactionCollection.findByIdAndDelete({ _id: transId }).populate('category');
+  static delete = async (transId: string): Promise<Objects.Transaction> => {
+    const response: Objects.Transaction = await transactionCollection
+      .findByIdAndDelete({ _id: transId })
+      .populate('category');
 
     DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
 
@@ -90,10 +95,10 @@ export default class DbTransactions {
    *
    * @returns The deleted transaction as confirmation
    */
-  static deleteAll = async (walletId: string): Promise<Transaction[]> => {
+  static deleteAll = async (walletId: string): Promise<Objects.Transaction[]> => {
     const response = await transactionCollection.deleteMany({ wallet_id: walletId });
 
-    return response as Transaction[];
+    return response as Objects.Transaction[];
   };
 
   /** getById
@@ -103,9 +108,9 @@ export default class DbTransactions {
    *
    * @returns The transaction from the DB with the userId attached
    */
-  static getById = async (transId: string): Promise<Transaction> => {
+  static getById = async (transId: string): Promise<Objects.Transaction> => {
     const response = await transactionCollection.findOne({ _id: transId }).populate('category');
-    return response as Transaction;
+    return response as Objects.Transaction;
   };
 
   /** getAll
@@ -117,7 +122,7 @@ export default class DbTransactions {
    *
    * @returns The transactions of the wallet
    */
-  static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Transaction[]> => {
+  static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Objects.Transaction[]> => {
     let response: any;
 
     const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
@@ -136,7 +141,7 @@ export default class DbTransactions {
 
     response = await transactionCollection.find(filter).populate('category');
 
-    return response as Transaction[];
+    return response as Objects.Transaction[];
   };
 
   /** getCategory
@@ -146,9 +151,9 @@ export default class DbTransactions {
    *
    * @returns The category if it exists
    */
-  static getCategory = async (category_id: string): Promise<Category> => {
+  static getCategory = async (category_id: string): Promise<Objects.Category> => {
     const response = await categoryCollection.findById(category_id);
-    return response as Category;
+    return response as Objects.Category;
   };
 
   /** update
@@ -159,8 +164,10 @@ export default class DbTransactions {
    *
    * @returns The updated transaction
    */
-  static update = async (old: Transaction, contents: Transaction): Promise<Transaction> => {
-    const response: Transaction = await transactionCollection.findByIdAndUpdate(old._id, { $set: { ...contents } }).populate('category');
+  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<Objects.Transaction> => {
+    const response: Objects.Transaction = await transactionCollection
+      .findByIdAndUpdate(old._id, { $set: { ...contents } })
+      .populate('category');
 
     // Updates the old and new wallets
     DbWallets.updateAmount(old.wallet_id, old.amount * -1, old.category.type);

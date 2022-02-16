@@ -41,14 +41,13 @@ For production
 
 ### Heroku
 The repository also has the capabilty to be deployed with heroku. Don't forget to add 
-the recursive git submodules to the builpacks.
+the recursive git submodules to the buildpacks.
 
 ## Environment
 The repository has an [example environment](/env.sample) which contains all the 
 necessary env variables for this service to work.
 
 ## Future_Improvements
-- [ ] Add categories for transactions
 - [ ] Add loan/debt mechanics
 - [ ] Add parent/daughter wallets
 

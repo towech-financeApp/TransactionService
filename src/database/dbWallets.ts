@@ -7,7 +7,7 @@
 import mongoose from 'mongoose';
 mongoose.set('returnOriginal', false);
 
-import { Wallet } from '../../Models';
+import { Objects } from '../Models';
 import DbTransactions from './dbTransactions';
 
 const WalletSchema = new mongoose.Schema({
@@ -29,7 +29,7 @@ export default class DbWallets {
    *
    * @returns The inserted wallet
    */
-  static add = async (userId: string, name: string): Promise<Wallet> => {
+  static add = async (userId: string, name: string): Promise<Objects.Wallet> => {
     const response = new walletCollection({
       user_id: userId,
       name,
@@ -37,7 +37,7 @@ export default class DbWallets {
       createdAt: new Date().toISOString(),
     }).save();
 
-    return response as Wallet;
+    return response as Objects.Wallet;
   };
 
   /** delete
@@ -47,14 +47,14 @@ export default class DbWallets {
    *
    * @returns The deleted transaction as confirmation
    */
-  static delete = async (walletId: string): Promise<Wallet> => {
+  static delete = async (walletId: string): Promise<Objects.Wallet> => {
     // Deletes the transactions
     await DbTransactions.deleteAll(walletId);
 
     // Deletes the wallet
     const deletedWallet = await walletCollection.findByIdAndDelete(walletId);
 
-    return deletedWallet as Wallet;
+    return deletedWallet as Objects.Wallet;
   };
 
   /** getByName
@@ -65,9 +65,9 @@ export default class DbWallets {
    *
    * @returns The wallet from the DB
    */
-  static getByName = async (userId: string, name: string): Promise<Wallet> => {
+  static getByName = async (userId: string, name: string): Promise<Objects.Wallet> => {
     const response = await walletCollection.findOne({ user_id: userId, name });
-    return response as Wallet;
+    return response as Objects.Wallet;
   };
 
   /** getById
@@ -77,9 +77,9 @@ export default class DbWallets {
    *
    * @returns The wallet from the DB
    */
-  static getById = async (walletId: string) => {
+  static getById = async (walletId: string): Promise<Objects.Wallet> => {
     const response = await walletCollection.findOne({ _id: walletId });
-    return response as Wallet;
+    return response as Objects.Wallet;
   };
 
   /** getWallets
@@ -89,23 +89,26 @@ export default class DbWallets {
    *
    * @returns {Wallet[]} All the Wallets that belong to the user
    */
-  static getWallets = async (userId: string): Promise<Wallet[]> => {
+  static getWallets = async (userId: string): Promise<Objects.Wallet[]> => {
     const response = await walletCollection.find({ user_id: userId });
-    return response as Wallet[];
+    return response as Objects.Wallet[];
   };
 
   /** update
    * Updates the contents of the given wallet.
    *
    * IMPORTANT: THE "MONEY" ATTRIBUTE MUST NOT BE UPDATED HERE
-   *
    * @param {string} walletId Id of the wallet
    * @param {Wallet} contents new content
    *
    * @returns The updated wallet
    */
-  static update = async (walletId: string, contents: Wallet): Promise<Wallet> => {
-    const response: Wallet = await walletCollection.findByIdAndUpdate(walletId, { $set: { ...contents } });
+  static update = async (wallet_Id: string, content: Objects.Wallet): Promise<Objects.Wallet> => {
+    const cleanedWallet: any = content;
+
+    const response: Objects.Wallet = await walletCollection.findByIdAndUpdate(wallet_Id, {
+      $set: { ...cleanedWallet },
+    });
 
     return response;
   };
@@ -118,7 +121,7 @@ export default class DbWallets {
    *
    */
   static updateAmount = async (walletId: string, amount: number, type: 'Income' | 'Expense'): Promise<void> => {
-    const value = type == 'Income' ? amount : (amount * -1);
+    const value = type == 'Income' ? amount : amount * -1;
     await walletCollection.findOneAndUpdate({ _id: walletId }, { $inc: { money: value } });
   };
 }

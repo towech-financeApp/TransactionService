@@ -5,10 +5,11 @@
  * Contains functions that validate data
  */
 
-import DbWallets from '../database/schemas/dbWallets';
-import DbTransactions from '../database/schemas/dbTransactions';
+import DbWallets from '../database/dbWallets';
+import DbTransactions from '../database/dbTransactions';
 
-import { Wallet, Transaction } from '../Models';
+import { Objects } from '../Models';
+import logger from 'tow96-logger';
 
 export default class Validator {
   /** validateAmount
@@ -54,8 +55,7 @@ export default class Validator {
 
     if (!dbCategory) {
       errors.category = "Category doesn't exist";
-    }
-    else if (dbCategory.user_id !== '-1' && dbCategory.user_id !== user_id) {
+    } else if (dbCategory.user_id !== '-1' && dbCategory.user_id !== user_id) {
       errors.category = 'Category does not belong to the user';
     }
 
@@ -182,7 +182,7 @@ export default class Validator {
   static transactionOwnership = async (
     userId: string,
     transactionId: string,
-  ): Promise<{ valid: boolean; errors: any; transaction: Transaction }> => {
+  ): Promise<{ valid: boolean; errors: any; transaction: Objects.Transaction }> => {
     // Creates an object that will hold all the errors
     const errors: any = {};
 
@@ -211,7 +211,7 @@ export default class Validator {
   static walletOwnership = async (
     userId: string,
     walletId: string,
-  ): Promise<{ valid: boolean; errors: any; wallet: Wallet }> => {
+  ): Promise<{ valid: boolean; errors: any; wallet: Objects.Wallet }> => {
     // Creates an object that will hold all the errors
     const errors: any = {};
 
