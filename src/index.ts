@@ -1,5 +1,5 @@
 /** index.ts
- *
+ * Copyright (c) 2022, Towechlabs
  * Main file for the worker of the user service
  *
  */
@@ -8,76 +8,102 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Libraries
-import Queue from 'tow96-amqpwrapper';
 import express from 'express';
 import logger from 'tow96-logger';
-import connectToMongo from './database/mongo';
-import processMessage from './routes';
+import mongoose from 'mongoose';
+import Queue from 'tow96-amqpwrapper';
 
-// Gets some values from the env, if not present, uses default values
-const queueName = process.env.QUEUE_NAME || 'userQueue';
+// Utils
+import MessageProcessor from './MessageProcessor';
 
-// It's declared as function so it can be asynchronous
-const runWorker = async () => {
-  connectToMongo();
+// Decalres the class
+class TransactionService {
+  // Gets some values from the env, if not present, uses default values
+  private queueName = process.env.QUEUE_NAME || 'transactionQueue';
+  private databaseUrl = process.env.DATABASE_URL || '';
+  private httpPort = process.env.PORT || 3000;
+  private serviceName = process.env.NAME || 'TransactionService';
 
-  // Connects to rabbitMQ and sets a channel up
-  const connection = await Queue.startConnection();
-  const channel = await Queue.setUpChannelAndExchange(connection);
+  // Connect to database function
+  connectToMongo = (): void => {
+    mongoose
+      .connect(this.databaseUrl)
+      .then(() => logger.info('Connected to database'))
+      .catch((err) => {
+        if (this.databaseUrl !== '') {
+          logger.error(`${err}`);
+          logger.info('Process exited with code 1');
+        } else {
+          logger.error('No Mongo url provided, exiting with error 1');
+        }
+        process.exit(1);
+      });
+  };
 
-  // Asserts and binds the queue that all workers of this type will user
-  const userQ = await channel.assertQueue(queueName, { durable: false });
-  channel.bindQueue(userQ.queue, Queue.exchangeName, queueName);
+  // Worker Main function
+  runWorker = async (): Promise<void> => {
+    this.connectToMongo();
 
-  // Begins to listen for messages on the queue
-  logger.info(`Listening for messages on queue ${queueName}`);
+    // Connects to rabbitMQ and sets a channel up
+    const connection = await Queue.startConnection();
+    const channel = await Queue.setUpChannelAndExchange(connection);
 
-  // Using the channel cosume, the program enters a loop that will check continously
-  channel.consume(
-    queueName,
-    async (msg) => {
-      if (!msg) return; // If there is no message, finsihes and checks again, this allows for faster iterations
+    // Asserts and binds the queue that all workers of this type will user
+    const userQ = await channel.assertQueue(this.queueName, { durable: false });
+    channel.bindQueue(userQ.queue, Queue.exchangeName, this.queueName);
 
-      // Handles the message
-      try {
-        // Processes the message
-        const content = await processMessage(JSON.parse(msg.content.toString()));
+    // Begins to listen for messages on the queue
+    logger.info(`Listening for messages on queue ${this.queueName}`);
 
-        // reply if necessary
-        if (msg.properties.replyTo)
-          Queue.respondToQueue(channel, msg.properties.replyTo, msg.properties.correlationId, content);
+    // Using the channel cosume, the program enters a loop that will check continously
+    channel.consume(
+      this.queueName,
+      async (msg) => {
+        if (!msg) return; // If there is no message, finishes and checks again, this allows for faster iterations
 
-        // Acknowledges the message
-        channel.ack(msg);
-      } catch (err: any) {
-        logger.error(err);
-      }
-    },
-    { noAck: false },
-  );
-};
+        // Handles the message
+        try {
+          // Processes the message
+          const content = await MessageProcessor.process(JSON.parse(msg.content.toString()));
 
-// Sets up the server which is just a front-page that reports status (required for heroku)
-const startServer = async () => {
-  const app = express();
-  app.set('port', process.env.PORT || 3000);
+          // reply if necessary
+          if (msg.properties.replyTo)
+            Queue.respondToQueue(channel, msg.properties.replyTo, msg.properties.correlationId, content);
 
-  app.get('/', (_, res) => {
-    res.send(`${process.env.NAME} is running`);
-  });
+          // Acknowledges the message
+          channel.ack(msg);
+        } catch (err: any) {
+          logger.error(err);
+        }
+      },
+      { noAck: false },
+    );
+  };
 
-  // Starts the server
-  app.listen(app.get('port'), () => {
-    logger.info(`Server running on port: ${app.get('port')}`);
-  });
-};
+  // Start Server: Starts a simple HTTP server to report that the worker is alive
+  startServer = async (): Promise<void> => {
+    const app = express();
+    app.set('port', this.httpPort);
 
-// Runs the worker and front page
-runWorker().catch((err) => {
+    app.get('/', (_, res) => {
+      res.send(`${this.serviceName} is running`);
+    });
+
+    // Starts the server
+    app.listen(app.get('port'), () => {
+      logger.info(`Server running on port: ${app.get('port')}`);
+    });
+  };
+}
+
+const service = new TransactionService();
+
+// Starts the service
+service.runWorker().catch((err) => {
   logger.error(err);
 });
 
-startServer().catch((err: any) => {
+service.startServer().catch((err: any) => {
   logger.error(err);
   logger.error('Exiting app with code 1');
   process.exit(1);
