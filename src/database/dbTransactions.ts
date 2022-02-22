@@ -95,10 +95,8 @@ export default class DbTransactions {
    *
    * @returns The deleted transaction as confirmation
    */
-  static deleteAll = async (walletId: string): Promise<Objects.Transaction[]> => {
-    const response = await transactionCollection.deleteMany({ wallet_id: walletId });
-
-    return response as Objects.Transaction[];
+  static deleteAll = async (walletId: string): Promise<void> => {
+    await transactionCollection.deleteMany({ wallet_id: walletId });
   };
 
   /** getById
@@ -123,8 +121,6 @@ export default class DbTransactions {
    * @returns The transactions of the wallet
    */
   static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Objects.Transaction[]> => {
-    let response: any;
-
     const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
@@ -139,7 +135,7 @@ export default class DbTransactions {
     };
     if (walletId !== '-1') filter.wallet_id = walletId;
 
-    response = await transactionCollection.find(filter).populate('category');
+    const response = await transactionCollection.find(filter).populate('category');
 
     return response as Objects.Transaction[];
   };

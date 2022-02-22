@@ -9,7 +9,6 @@ import DbWallets from '../database/dbWallets';
 import DbTransactions from '../database/dbTransactions';
 
 import { Objects } from '../Models';
-import logger from 'tow96-logger';
 
 export default class Validator {
   /** validateAmount

@@ -106,11 +106,15 @@ export default class DbWallets {
   static update = async (wallet_Id: string, content: Objects.Wallet): Promise<Objects.Wallet> => {
     const cleanedWallet: any = content;
 
-    const response: Objects.Wallet = await walletCollection.findByIdAndUpdate(wallet_Id, {
-      $set: { ...cleanedWallet },
-    });
+    const response = await walletCollection.findByIdAndUpdate(
+      wallet_Id,
+      {
+        $set: { ...cleanedWallet },
+      },
+      { new: true },
+    );
 
-    return response;
+    return response as Objects.Wallet;
   };
 
   /** updateAmount
