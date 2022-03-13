@@ -1,5 +1,6 @@
 # Base stage ------------------------------------------------------------------------
-FROM node:16-alpine3.13 as base
+FROM alpine as base
+RUN apk add --update nodejs npm
 WORKDIR /usr/app
 COPY package*.json ./
 

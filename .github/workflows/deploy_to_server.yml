@@ -1,0 +1,33 @@
+name: deploy to server
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: docker build 
+        run: |
+          docker build . --target prod --tag transactionservice:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: deployment
+        run: |
+          docker rm -f userService 2> /dev/null || true
+          docker run -d \
+          --restart unless-stopped \
+          --name transService \
+          --network towech-finance-network \
+          -v /srv/logs/TransactionService:/usr/app/logs \
+          --env-file /srv/environments/TransactionService.env \
+          transactionservice:latest
+          docker image prune -f
