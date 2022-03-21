@@ -198,7 +198,7 @@ class TransactionProcessing {
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
       // If there aren't any changes, returns a 304 code
-      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 304);
+      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 200);
 
       // Updates the transaction
       const updatedTransaction = await DbTransactions.update(transValid.transaction, content);
@@ -367,7 +367,7 @@ class WalletProcessing {
       }
 
       // If there aren't any changes, returns a 304 code
-      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 304);
+      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 200);
 
       // If there is an error, throws it
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
