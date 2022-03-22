@@ -288,11 +288,32 @@ class WalletProcessing {
       const amountValidation = Validator.validateAmount((message.money || '').toString());
       if (!amountValidation.valid) errors = { ...errors, ...amountValidation.errors };
 
+      // Validates that the currency is valid
+      const currencyValidation = await Validator.validateCurrency(message.currency || '', message.parent_id || '-1');
+      if (!currencyValidation.valid) errors = { ...errors, ...currencyValidation.errors };
+
+      // if a subwallet is being added, validates that the requester owns the parent wallet and that it isn't a parent wallet already
+      const lineageValidation = await Validator.walletLineage(message.user_id, message.parent_id || '-1');
+      if (!lineageValidation.valid) errors = { ...errors, ...lineageValidation.errors };
+
+      // If the given Icon id is not an integer greater or equal to zero, it is defaulted to zero
+      const icon_id = Validator.setIconId(message.icon_id);
+
       // Sends an error response if there is any error
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
       // Adds the wallet
-      const newWallet = await DbWallets.add(message.user_id, message.name.trim());
+      const newWallet = await DbWallets.add(
+        message.user_id,
+        message.name.trim(),
+        icon_id,
+        currencyValidation.output,
+        lineageValidation.parent,
+      );
+
+      // If the added wallet is a subwallet, its id is added to its parent
+      if (newWallet.parent_id && newWallet.parent_id !== '-1')
+        await DbWallets.addChild(newWallet.parent_id, newWallet._id);
 
       // Adds the initial transaction if there is money inserted
       if (amountValidation.rounded > 0) {
@@ -310,6 +331,7 @@ class WalletProcessing {
       }
 
       return new AmqpMessage(newWallet, 'add-Wallet', 200);
+      // return new AmqpMessage({ t: "test" }, "addWallet", 200)
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -364,6 +386,24 @@ class WalletProcessing {
           if (!nameValidation.valid) errors = { ...errors, ...nameValidation.errors };
           content.name = message.name.trim();
         }
+      }
+
+      // Checks if currency is valid
+      if (message.currency) {
+        if (message.currency.trim() !== validWallet.wallet.currency) {
+          const currencyValidation = await Validator.validateCurrency(
+            message.currency,
+            validWallet.wallet.parent_id || '-1',
+          );
+
+          if (!currencyValidation.valid) errors = { ...errors, ...currencyValidation.errors };
+          content.currency = currencyValidation.output;
+        }
+      }
+
+      // Checks if the icon_id is valid
+      if (message.icon_id) {
+        content.icon_id = Validator.setIconId(message.icon_id);
       }
 
       // If there aren't any changes, returns a 304 code
