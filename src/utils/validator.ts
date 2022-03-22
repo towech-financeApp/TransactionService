@@ -216,7 +216,7 @@ export default class Validator {
   static setIconId = (icon_id: number): number => {
     let ico = icon_id || '';
     ico = parseInt(ico.toString(), 10);
-    if (ico === NaN || ico < 0) ico = 0;
+    if (isNaN(ico) || ico < 0) ico = 0;
     return ico;
   };
 
