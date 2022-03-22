@@ -103,6 +103,7 @@ export default class Validator {
     if (currency === null) errors.currency = 'Currency must not be empty';
     else {
       output = output.trim();
+      output = output.toUpperCase();
 
       if (output === '') errors.currency = 'Currency must not be empty';
       else if (output.length !== 3) errors.currency = 'Currency must be a 3 letter acronym';
