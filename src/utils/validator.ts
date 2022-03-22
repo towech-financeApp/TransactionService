@@ -24,7 +24,7 @@ export default class Validator {
     // Creates an object that will hold all the errors
     const errors: any = {};
 
-    const amountNum = parseFloat(amount);
+    const amountNum = parseFloat(amount.toString());
 
     if (isNaN(amountNum)) {
       errors.amount = 'Amount is not a number';
@@ -81,6 +81,43 @@ export default class Validator {
     return {
       errors,
       valid: Object.keys(errors).length < 1,
+    };
+  };
+
+  /** validateCurrency
+   * Checks if a given currency is valid
+   *
+   * @param {string} currency
+   *
+   * @returns Valid: Boolean that confirms validity
+   * @returns errors: Object with all the errors
+   * @returns output: String that contains the corrected currency
+   */
+  static validateCurrency = async (
+    currency: string,
+    parent: string,
+  ): Promise<{ valid: boolean; errors: any; output: string }> => {
+    const errors: any = {};
+    let output = currency;
+
+    if (currency === null) errors.currency = 'Currency must not be empty';
+    else {
+      output = output.trim();
+
+      if (output === '') errors.currency = 'Currency must not be empty';
+      else if (output.length !== 3) errors.currency = 'Currency must be a 3 letter acronym';
+
+      if (parent !== '-1') {
+        const wallet = await DbWallets.getById(parent);
+
+        if (wallet.currency !== output) errors.currency = 'Currency must match its parent';
+      }
+    }
+
+    return {
+      errors,
+      valid: Object.keys(errors).length < 1,
+      output,
     };
   };
 
@@ -169,6 +206,20 @@ export default class Validator {
     };
   };
 
+  /** setIconId
+   * Rather than checking that the icon id is valid, as it is managed by the frontend rather than the db, it just ensures that it is a positive integer
+   *
+   * @param {number} icon_id
+   *
+   * @returns corrected icon_id
+   */
+  static setIconId = (icon_id: number): number => {
+    let ico = icon_id || '';
+    ico = parseInt(ico.toString(), 10);
+    if (ico === NaN || ico < 0) ico = 0;
+    return ico;
+  };
+
   /** transactionOwnership
    *  Checks if the user is the owner of a transaction
    *
@@ -195,6 +246,39 @@ export default class Validator {
       errors,
       valid: Object.keys(errors).length < 1,
       transaction,
+    };
+  };
+
+  /** walletLineage
+   *  Checks if the user is the owner of the parent wallet and if
+   *  that wallet is not a subwallet already
+   *
+   * @param {string} user_Id
+   * @param {string} parent_Id
+   *
+   * @returns Valid: Boolean that confirms validity
+   * @returns errors: Object with all the errors
+   * @returns parent: String contained the trimmed parent_walletId
+   */
+  static walletLineage = async (
+    user_Id: string,
+    parent_Id: string,
+  ): Promise<{ valid: boolean; errors: any; parent: string }> => {
+    const errors: any = {};
+    const parent = parent_Id.trim() || '-1';
+
+    if (parent !== '-1') {
+      const wallet = await DbWallets.getById(parent);
+
+      if (wallet.user_id !== user_Id) errors.parent_id = 'User does not own parent wallet';
+      else if (wallet.parent_id && wallet.parent_id !== '-1')
+        errors.parent_id = 'Only one generation of subwallets is allowed';
+    }
+
+    return {
+      errors,
+      valid: Object.keys(errors).length < 1,
+      parent,
     };
   };
 

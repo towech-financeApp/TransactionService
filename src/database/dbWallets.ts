@@ -12,7 +12,11 @@ import DbTransactions from './dbTransactions';
 
 const WalletSchema = new mongoose.Schema({
   user_id: String,
+  icon_id: Number,
+  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallets', default: null },
+  child_id: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Wallets', default: null }],
   name: String,
+  currency: String,
   money: Number,
   createdAt: Date,
 });
@@ -26,18 +30,41 @@ export default class DbWallets {
    *
    * @param {string} userId
    * @param {string} name
+   * @param {number} icon_id
+   * @param {string} currency
+   * @param {string} parent_id
    *
    * @returns The inserted wallet
    */
-  static add = async (userId: string, name: string): Promise<Objects.Wallet> => {
+  static add = async (
+    userId: string,
+    name: string,
+    icon_id: number,
+    currency: string,
+    parent_id: string,
+  ): Promise<Objects.Wallet> => {
     const response = new walletCollection({
       user_id: userId,
+      icon_id,
+      currency,
       name,
       money: 0,
+      parent_id: parent_id === '-1' ? null : parent_id,
       createdAt: new Date().toISOString(),
     }).save();
 
     return response as Objects.Wallet;
+  };
+
+  /** addChild
+   * Adds a subwallet to a wallet
+   *
+   * @param {string} parent_id
+   * @param {string} child_id
+   *
+   */
+  static addChild = async (parent_id: string, child_id: string): Promise<void> => {
+    await walletCollection.findByIdAndUpdate(parent_id, { $push: { child_id: child_id } });
   };
 
   /** delete
@@ -48,6 +75,15 @@ export default class DbWallets {
    * @returns The deleted transaction as confirmation
    */
   static delete = async (walletId: string): Promise<Objects.Wallet> => {
+    // TODO: Convert transactions that aren't transfers from family to the parent
+
+    // Delete child transactions and wallets
+    const childWallets = await walletCollection.find({ parent_id: walletId });
+    childWallets.map(async (w: Objects.Wallet) => {
+      await DbTransactions.deleteAll(w._id);
+      await walletCollection.findByIdAndDelete(w._id);
+    });
+
     // Deletes the transactions
     await DbTransactions.deleteAll(walletId);
 
@@ -90,14 +126,24 @@ export default class DbWallets {
    * @returns {Wallet[]} All the Wallets that belong to the user
    */
   static getWallets = async (userId: string): Promise<Objects.Wallet[]> => {
-    const response = await walletCollection.find({ user_id: userId });
+    // const response = await walletCollection.find({ user_id: userId, parent_id: { $or: [ {$exists: false} ] }}).populate('child_id');
+    const filter: mongoose.FilterQuery<any> = {
+      $and: [
+        { user_id: userId },
+        {
+          $or: [{ parent_id: { $exists: false } }, { parent_id: { $exists: true, $in: [null] } }],
+        },
+      ],
+    };
+    const response = await walletCollection.find(filter).populate('child_id');
+
     return response as Objects.Wallet[];
   };
 
   /** update
    * Updates the contents of the given wallet.
    *
-   * IMPORTANT: THE "MONEY" ATTRIBUTE MUST NOT BE UPDATED HERE
+   * IMPORTANT: THE "MONEY" ATTRIBUTE CAN'T BE UPDATED HERE, IT GETS DELETED BEFORE CHANGES ARE APPLIED
    * @param {string} walletId Id of the wallet
    * @param {Wallet} contents new content
    *
@@ -105,6 +151,7 @@ export default class DbWallets {
    */
   static update = async (wallet_Id: string, content: Objects.Wallet): Promise<Objects.Wallet> => {
     const cleanedWallet: any = content;
+    cleanedWallet.money = undefined;
 
     const response = await walletCollection.findByIdAndUpdate(
       wallet_Id,
