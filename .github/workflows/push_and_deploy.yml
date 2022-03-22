@@ -45,18 +45,23 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: deployment
-        run: |
-          docker rm -f transService 2> /dev/null || true
-          docker image rm ghcr.io/towech-financeapp/transactionservice 2> /dev/null || true
-          docker pull ghcr.io/towech-financeapp/transactionservice:latest
-          docker run -d \
-          --restart unless-stopped \
-          --name transService \
-          --network towech-finance-network \
-          -v /srv/logs/TransactionService:/usr/app/logs \
-          --env-file /srv/environments/TransactionService.env \
-          ghcr.io/towech-financeapp/transactionservice:latest
-          docker image prune -f
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker rm -f transService 2> /dev/null || true
+            docker image rm ghcr.io/towech-financeapp/transactionservice 2> /dev/null || true
+            docker pull ghcr.io/towech-financeapp/transactionservice:latest
+            docker run -d \
+            --restart unless-stopped \
+            --name transService \
+            --network towech-finance-network \
+            -v /srv/logs/TransactionService:/usr/app/logs \
+            --env-file /srv/environments/TransactionService.env \
+            ghcr.io/towech-financeapp/transactionservice:latest
+            docker image prune -f
