@@ -51,19 +51,18 @@ export default class DbTransactions {
     transactionDate: Date,
     category_id: string,
   ): Promise<Objects.Transaction> => {
-    const response = await (
-      await new transactionCollection({
-        user_id: userId,
-        wallet_id: walletId,
-        concept,
-        amount: Math.abs(amount),
-        transactionDate,
-        category: category_id,
-        createdAt: new Date().toISOString(),
-      }).save()
-    )
-      .populate('category')
-      .execPopulate();
+
+    const response = await new transactionCollection({
+      user_id: userId,
+      wallet_id: walletId,
+      concept: concept,
+      amount: Math.abs(amount),
+      transactionDate: transactionDate,
+      category: category_id,
+      createdAt: new Date().toISOString(),
+    }).save()
+
+    await response.populate('category')
 
     // Also updates the amount value of the wallet
     DbWallets.updateAmount(walletId, amount, response.category.type);
