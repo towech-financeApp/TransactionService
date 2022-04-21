@@ -46,6 +46,8 @@ export default class MessageProcessor {
         return await WalletProcessing.getById(payload);
       case 'get-Wallets':
         return await WalletProcessing.getAll(payload);
+      case 'transfer-Wallet':
+        return await WalletProcessing.transfer(payload);
       default:
         logger.debug(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
@@ -96,6 +98,7 @@ class TransactionProcessing {
         validAmount.rounded,
         message.transactionDate,
         message.category._id,
+        message.excludeFromReport,
       );
 
       return new AmqpMessage(response, 'add-Transaction', 200);
@@ -194,6 +197,11 @@ class TransactionProcessing {
         }
       }
 
+      // Checks if the exclude from report flag changed
+      if (message.excludeFromReport !== transValid.transaction.excludeFromReport) {
+        content.excludeFromReport = message.excludeFromReport;
+      }
+
       // If there is an error, throws it
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
@@ -266,7 +274,8 @@ class TransactionProcessing {
 }
 
 class WalletProcessing {
-  private static otherCategoryId = process.env.OTHER_CATEGORYID || '';
+  private static otherCategoryId_In = process.env.OTHER_CATEGORYID || '';
+  private static otherCategoryId_Out = process.env.OTHER_CATEGORYID_OUT || '';
 
   /** add
    * Adds a wallet to the database
@@ -323,7 +332,7 @@ class WalletProcessing {
           'Initial transaction',
           amountValidation.rounded,
           newWallet.createdAt,
-          WalletProcessing.otherCategoryId,
+          WalletProcessing.otherCategoryId_In,
         );
 
         // Updates the wallet info that will be sent (it's already updated in the DB)
@@ -454,6 +463,43 @@ class WalletProcessing {
       if (!validWallet.valid) return AmqpMessage.errorMessage('Authentication Error', 403, validWallet.errors);
 
       return new AmqpMessage(validWallet.wallet, 'get-Wallet', 200);
+    } catch (e) {
+      return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
+    }
+  };
+
+  // user_id
+  // from_id
+  // to_id
+  // amount
+
+  /** transfer
+   * Adds a pair of transference transactions
+   * @param {} message
+   *
+   * @returns The transaction pair
+   */
+  static transfer = async (message: any): Promise<AmqpMessage> => {
+    logger.http(`Transfering from wallet: ${message.from_id} to wallet: ${message.to_id}`);
+
+    try {
+      // Checks if the requester is the owner of the origin wallet
+      const validFromWallet = await Validator.walletOwnership(message.user_id, message.from_id);
+      if (!validFromWallet.valid)
+        return AmqpMessage.errorMessage('Authentication Error', 403, { from_id: { ...validFromWallet.errors } });
+
+      // Checks if the requester is the owner of the destination wallet
+      const validToWallet = await Validator.walletOwnership(message.user_id, message.to_id);
+      if (!validToWallet.valid)
+        return AmqpMessage.errorMessage('Authentication Error', 403, { from_id: { ...validFromWallet.errors } });
+
+      // Validates that the given amount is a valid number
+      const amountValidation = Validator.validateAmount(message.amount.toString());
+      if (!amountValidation.valid) AmqpMessage.errorMessage('Invalid amount', 422, amountValidation.errors);
+
+      // TODO: Add the logic
+
+      return new AmqpMessage(null, 'get-Wallet', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }

@@ -23,6 +23,7 @@ const TransactionSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Categories' },
   concept: String,
   amount: Number,
+  excludeFromReport: {type: Boolean, default: undefined},
   transactionDate: Date,
   createdAt: Date,
 });
@@ -50,6 +51,7 @@ export default class DbTransactions {
     amount: number,
     transactionDate: Date,
     category_id: string,
+    excludeFromReport?: boolean
   ): Promise<Objects.Transaction> => {
 
     const response = await new transactionCollection({
@@ -59,6 +61,7 @@ export default class DbTransactions {
       amount: Math.abs(amount),
       transactionDate: transactionDate,
       category: category_id,
+      excludeFromReport: excludeFromReport,
       createdAt: new Date().toISOString(),
     }).save()
 
