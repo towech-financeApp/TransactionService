@@ -20,9 +20,11 @@ const CategorySchema = new mongoose.Schema({
 const TransactionSchema = new mongoose.Schema({
   user_id: String,
   wallet_id: String,
+  transfer_id: String,
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Categories' },
   concept: String,
   amount: Number,
+  excludeFromReport: { type: Boolean, default: undefined },
   transactionDate: Date,
   createdAt: Date,
 });
@@ -50,8 +52,8 @@ export default class DbTransactions {
     amount: number,
     transactionDate: Date,
     category_id: string,
+    excludeFromReport?: boolean,
   ): Promise<Objects.Transaction> => {
-
     const response = await new transactionCollection({
       user_id: userId,
       wallet_id: walletId,
@@ -59,10 +61,11 @@ export default class DbTransactions {
       amount: Math.abs(amount),
       transactionDate: transactionDate,
       category: category_id,
+      excludeFromReport: excludeFromReport,
       createdAt: new Date().toISOString(),
-    }).save()
+    }).save();
 
-    await response.populate('category')
+    await response.populate('category');
 
     // Also updates the amount value of the wallet
     DbWallets.updateAmount(walletId, amount, response.category.type);
@@ -81,6 +84,15 @@ export default class DbTransactions {
     const response: Objects.Transaction = await transactionCollection
       .findByIdAndDelete({ _id: transId })
       .populate('category');
+
+    // If the deleted transaction is a transfer, deletes the partner transaction
+    if (response.transfer_id) {
+      const transfer: Objects.Transaction = await transactionCollection
+        .findByIdAndDelete({ _id: response.transfer_id })
+        .populate('category');
+
+      DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
+    }
 
     DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
 
@@ -160,8 +172,35 @@ export default class DbTransactions {
    * @returns The updated transaction
    */
   static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<Objects.Transaction> => {
+    const finalChanges: any = contents;
+    let unlinkTransfer = false;
+
+    // If the changed transaction is a transfer, the category can't be changed, it also sends the changes to the other transaction
+    if (old.transfer_id) {
+      const transfer = await DbTransactions.getById(old.transfer_id);
+
+      // If there is no transfer_id, it unlinks the transaction
+      if (transfer === null) {
+        unlinkTransfer = true;
+      } else {
+        finalChanges.category = undefined;
+        const nuTransfer: Objects.Transaction = await transactionCollection
+          .findByIdAndUpdate(transfer._id, { $set: { ...finalChanges } })
+          .populate('category');
+
+        DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
+        DbWallets.updateAmount(nuTransfer.wallet_id, nuTransfer.amount, nuTransfer.category.type);
+      }
+    }
+
+    const changes: mongoose.QueryOptions = {
+      $set: { ...finalChanges },
+    };
+
+    if (unlinkTransfer) changes.$unset = { transfer_id: '' };
+
     const response: Objects.Transaction = await transactionCollection
-      .findByIdAndUpdate(old._id, { $set: { ...contents } })
+      .findByIdAndUpdate(old._id, changes)
       .populate('category');
 
     // Updates the old and new wallets
