@@ -468,18 +468,13 @@ class WalletProcessing {
     }
   };
 
-  // user_id
-  // from_id
-  // to_id
-  // amount
-
   /** transfer
    * Adds a pair of transference transactions
    * @param {} message
    *
    * @returns The transaction pair
    */
-  static transfer = async (message: any): Promise<AmqpMessage> => {
+  static transfer = async (message: Requests.WorkerTransfer): Promise<AmqpMessage> => {
     logger.http(`Transfering from wallet: ${message.from_id} to wallet: ${message.to_id}`);
 
     try {
@@ -493,13 +488,54 @@ class WalletProcessing {
       if (!validToWallet.valid)
         return AmqpMessage.errorMessage('Authentication Error', 403, { from_id: { ...validFromWallet.errors } });
 
+      let errors = {};
+
+      // If the from and to wallets are the same, returns an error
+      if (validFromWallet.wallet._id.toString() === validToWallet.wallet._id.toString())
+        errors = { ...errors, to_id: "Destination wallet can't be the same" };
+
       // Validates that the given amount is a valid number
       const amountValidation = Validator.validateAmount(message.amount.toString());
-      if (!amountValidation.valid) AmqpMessage.errorMessage('Invalid amount', 422, amountValidation.errors);
+      if (!amountValidation.valid) errors = { ...errors, ...amountValidation.errors };
 
-      // TODO: Add the logic
+      // Validates that the concept is not empty
+      const validConcept = Validator.validateConcept(message.concept);
+      if (!validConcept.valid) errors = { ...errors, ...validConcept.errors };
 
-      return new AmqpMessage(null, 'get-Wallet', 200);
+      // Validates the transaction date
+      const validDate = Validator.validateDate(message.transactionDate.toString());
+      if (!validDate.valid) errors = { ...errors, ...validDate.errors };
+
+      // Sends an error response if there is any error
+      if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
+
+      // From transaction
+      const fromTransaction = await DbTransactions.add(
+        message.user_id,
+        message.from_id,
+        message.concept,
+        amountValidation.rounded,
+        message.transactionDate,
+        WalletProcessing.otherCategoryId_Out,
+        validToWallet.wallet.parent_id === validFromWallet.wallet._id,
+      );
+
+      // To transaction
+      const toTransaction = await DbTransactions.add(
+        message.user_id,
+        message.to_id,
+        message.concept,
+        amountValidation.rounded,
+        message.transactionDate,
+        WalletProcessing.otherCategoryId_In,
+        validFromWallet.wallet.parent_id === validToWallet.wallet._id,
+      );
+
+      // Updates the transaction pair to include the id of the other
+      const a = await DbTransactions.update(fromTransaction, { transfer_id: toTransaction._id } as Objects.Transaction);
+      const b = await DbTransactions.update(toTransaction, { transfer_id: fromTransaction._id } as Objects.Transaction);
+
+      return new AmqpMessage([a, b], 'get-Wallet', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
