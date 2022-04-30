@@ -29,8 +29,8 @@ const TransactionSchema = new mongoose.Schema({
   createdAt: Date,
 });
 
-const transactionCollection = mongoose.model('Transactions', TransactionSchema);
-const categoryCollection = mongoose.model('Categories', CategorySchema);
+const transactionCollection = mongoose.model<Objects.Transaction>('Transactions', TransactionSchema);
+const categoryCollection = mongoose.model<Objects.Category>('Categories', CategorySchema);
 
 // Functions to communicate with the collection ID
 export default class DbTransactions {
@@ -80,23 +80,27 @@ export default class DbTransactions {
    *
    * @returns The deleted transaction as confirmation
    */
-  static delete = async (transId: string): Promise<Objects.Transaction> => {
-    const response: Objects.Transaction = await transactionCollection
-      .findByIdAndDelete({ _id: transId })
-      .populate('category');
+  static delete = async (transId: string): Promise<Objects.Transaction[]> => {
+    const changes = [];
+
+    const response: Objects.Transaction =
+      (await transactionCollection.findByIdAndDelete({ _id: transId }).populate('category')) ||
+      ({} as Objects.Transaction);
+
+    DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
+    changes.push(response);
 
     // If the deleted transaction is a transfer, deletes the partner transaction
     if (response.transfer_id) {
-      const transfer: Objects.Transaction = await transactionCollection
-        .findByIdAndDelete({ _id: response.transfer_id })
-        .populate('category');
+      const transfer: Objects.Transaction =
+        (await transactionCollection.findByIdAndDelete({ _id: response.transfer_id }).populate('category')) ||
+        ({} as Objects.Transaction);
 
       DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
+      changes.push(transfer);
     }
 
-    DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
-
-    return response;
+    return changes;
   };
 
   /** deleteAll
@@ -163,6 +167,7 @@ export default class DbTransactions {
     return response as Objects.Category;
   };
 
+  // TODO; add new model to this
   /** update
    * Updates the contents of the given transaction.
    *
@@ -171,9 +176,12 @@ export default class DbTransactions {
    *
    * @returns The updated transaction
    */
-  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<Objects.Transaction> => {
+  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<any> => {
     const finalChanges: any = contents;
     let unlinkTransfer = false;
+
+    const oldTransactions = [];
+    const newTransactions = [];
 
     // If the changed transaction is a transfer, the category can't be changed, it also sends the changes to the other transaction
     if (old.transfer_id) {
@@ -184,12 +192,16 @@ export default class DbTransactions {
         unlinkTransfer = true;
       } else {
         finalChanges.category = undefined;
-        const nuTransfer: Objects.Transaction = await transactionCollection
-          .findByIdAndUpdate(transfer._id, { $set: { ...finalChanges } })
-          .populate('category');
+        const nuTransfer: Objects.Transaction =
+          (await transactionCollection
+            .findByIdAndUpdate(transfer._id, { $set: { ...finalChanges } })
+            .populate('category')) || ({} as Objects.Transaction);
 
         DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
         DbWallets.updateAmount(nuTransfer.wallet_id, nuTransfer.amount, nuTransfer.category.type);
+
+        oldTransactions.push(transfer);
+        newTransactions.push(nuTransfer);
       }
     }
 
@@ -199,14 +211,17 @@ export default class DbTransactions {
 
     if (unlinkTransfer) changes.$unset = { transfer_id: '' };
 
-    const response: Objects.Transaction = await transactionCollection
-      .findByIdAndUpdate(old._id, changes)
-      .populate('category');
+    const response: Objects.Transaction =
+      (await transactionCollection.findByIdAndUpdate(old._id, changes).populate('category')) ||
+      ({} as Objects.Transaction);
 
     // Updates the old and new wallets
     DbWallets.updateAmount(old.wallet_id, old.amount * -1, old.category.type);
     DbWallets.updateAmount(response.wallet_id, response.amount, response.category.type);
 
-    return response;
+    oldTransactions.push(old);
+    newTransactions.push(response);
+
+    return { old: oldTransactions, new: newTransactions };
   };
 }

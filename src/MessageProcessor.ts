@@ -10,7 +10,7 @@ import { AmqpMessage } from 'tow96-amqpwrapper';
 import logger from 'tow96-logger';
 
 // Models
-import { Objects, Requests } from './Models';
+import { Objects, Requests, Responses } from './Models';
 
 // Utils
 import Validator from './utils/validator';
@@ -20,7 +20,7 @@ import DbTransactions from './database/dbTransactions';
 import DbWallets from './database/dbWallets';
 
 export default class MessageProcessor {
-  static process = async (message: AmqpMessage): Promise<AmqpMessage> => {
+  static process = async (message: AmqpMessage): Promise<AmqpMessage<any>> => {
     // Destructures the message
     const { type, payload } = message;
 
@@ -62,7 +62,7 @@ class TransactionProcessing {
    *
    * @returns The new transaction
    */
-  static add = async (message: Objects.Transaction): Promise<AmqpMessage> => {
+  static add = async (message: Objects.Transaction): Promise<AmqpMessage<Objects.Transaction>> => {
     logger.http(`Add transaction to wallet: ${message.wallet_id}`);
 
     try {
@@ -113,7 +113,7 @@ class TransactionProcessing {
    *
    * @returns The deleted transaction
    */
-  static delete = async (message: Objects.Transaction): Promise<AmqpMessage> => {
+  static delete = async (message: Objects.Transaction): Promise<AmqpMessage<Objects.Transaction[]>> => {
     logger.http(`deleting transaction: ${message._id}`);
 
     try {
@@ -122,9 +122,9 @@ class TransactionProcessing {
       if (!transValid.valid) return AmqpMessage.errorMessage('Authentication Error', 403, transValid.errors);
 
       // Deletes the transaction
-      const transaction = await DbTransactions.delete(transValid.transaction._id);
+      const transactions = await DbTransactions.delete(transValid.transaction._id);
 
-      return new AmqpMessage(transaction, 'delete-transaction', 200);
+      return new AmqpMessage(transactions, 'delete-transaction', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -136,7 +136,7 @@ class TransactionProcessing {
    *
    * @returns The edited transaction
    */
-  static edit = async (message: Objects.Transaction): Promise<AmqpMessage> => {
+  static edit = async (message: Objects.Transaction): Promise<AmqpMessage<Responses.EditTransactionResponse>> => {
     logger.http(`Edit transaction: ${message._id}`);
 
     try {
@@ -206,7 +206,8 @@ class TransactionProcessing {
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
       // If there aren't any changes, returns a 304 code
-      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 200);
+      if (Object.keys(content).length < 1)
+        return new AmqpMessage({} as Responses.EditTransactionResponse, 'edit-Transaction', 204);
 
       // Updates the transaction
       const updatedTransaction = await DbTransactions.update(transValid.transaction, content);
@@ -223,7 +224,7 @@ class TransactionProcessing {
    *
    * @returns An array with the transactions
    */
-  static getAll = async (message: Requests.WorkerGetTransactions): Promise<AmqpMessage> => {
+  static getAll = async (message: Requests.WorkerGetTransactions): Promise<AmqpMessage<Objects.Transaction[]>> => {
     logger.http(`Get transactions: ${JSON.stringify(message)}`);
 
     try {
@@ -246,7 +247,7 @@ class TransactionProcessing {
 
       const transactions = await DbTransactions.getAll(message._id, message.user_id, datamonth);
 
-      return new AmqpMessage({ transactions }, 'get-Transactions', 200);
+      return new AmqpMessage(transactions, 'get-Transactions', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -258,7 +259,7 @@ class TransactionProcessing {
    *
    * @returns The transaction
    */
-  static getById = async (message: Objects.Transaction): Promise<AmqpMessage> => {
+  static getById = async (message: Objects.Transaction): Promise<AmqpMessage<Objects.Transaction>> => {
     logger.http(`Get transaction: ${message._id}`);
 
     try {
@@ -283,7 +284,7 @@ class WalletProcessing {
    *
    * @returns The new wallet
    */
-  static add = async (message: Objects.Wallet): Promise<AmqpMessage> => {
+  static add = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Adding wallet for user ${message.user_id}`);
 
     try {
@@ -352,7 +353,7 @@ class WalletProcessing {
    *
    * @returns The deleted wallet
    */
-  static delete = async (message: Objects.Wallet): Promise<AmqpMessage> => {
+  static delete = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Deleting wallet ${message._id}`);
 
     try {
@@ -375,7 +376,7 @@ class WalletProcessing {
    *
    * @returns The edited wallet
    */
-  static edit = async (message: Objects.Wallet): Promise<AmqpMessage> => {
+  static edit = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Editing wallet: ${message._id}`);
 
     try {
@@ -416,7 +417,7 @@ class WalletProcessing {
       }
 
       // If there aren't any changes, returns a 304 code
-      if (Object.keys(content).length < 1) return new AmqpMessage(null, 'edit-Transaction', 200);
+      if (Object.keys(content).length < 1) return new AmqpMessage({} as Objects.Wallet, 'edit-Transaction', 204);
 
       // If there is an error, throws it
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
@@ -436,13 +437,13 @@ class WalletProcessing {
    *
    * @returns An array containing the wallets
    */
-  static getAll = async (message: Objects.User.BaseUser): Promise<AmqpMessage> => {
+  static getAll = async (message: Objects.User.BaseUser): Promise<AmqpMessage<Objects.Wallet[]>> => {
     logger.http(`Get all wallets of user: ${message._id}`);
 
     try {
       const wallets = await DbWallets.getWallets(message._id);
 
-      return new AmqpMessage({ wallets }, 'get-wallets', 200);
+      return new AmqpMessage(wallets, 'get-wallets', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -454,7 +455,7 @@ class WalletProcessing {
    *
    * @returns The requested wallet
    */
-  static getById = async (message: Objects.Wallet): Promise<AmqpMessage> => {
+  static getById = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Get wallet: ${message._id}`);
 
     try {
@@ -474,7 +475,7 @@ class WalletProcessing {
    *
    * @returns The transaction pair
    */
-  static transfer = async (message: Requests.WorkerTransfer): Promise<AmqpMessage> => {
+  static transfer = async (message: Requests.WorkerTransfer): Promise<AmqpMessage<Objects.Transaction[]>> => {
     logger.http(`Transfering from wallet: ${message.from_id} to wallet: ${message.to_id}`);
 
     try {
