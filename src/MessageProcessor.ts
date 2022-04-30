@@ -536,7 +536,7 @@ class WalletProcessing {
       const a = await DbTransactions.update(fromTransaction, { transfer_id: toTransaction._id } as Objects.Transaction);
       const b = await DbTransactions.update(toTransaction, { transfer_id: fromTransaction._id } as Objects.Transaction);
 
-      return new AmqpMessage([a, b], 'get-Wallet', 200);
+      return new AmqpMessage([...a.new, ...b.new], 'get-Wallet', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
