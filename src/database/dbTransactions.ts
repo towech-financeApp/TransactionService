@@ -7,7 +7,7 @@
 import mongoose from 'mongoose';
 mongoose.set('returnOriginal', false);
 
-import { Objects } from '../Models';
+import { Objects, Responses } from '../Models';
 import DbWallets from './dbWallets';
 
 const CategorySchema = new mongoose.Schema({
@@ -167,7 +167,6 @@ export default class DbTransactions {
     return response as Objects.Category;
   };
 
-  // TODO; add new model to this
   /** update
    * Updates the contents of the given transaction.
    *
@@ -176,7 +175,7 @@ export default class DbTransactions {
    *
    * @returns The updated transaction
    */
-  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<any> => {
+  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<Responses.EditTransactionResponse> => {
     const finalChanges: any = contents;
     let unlinkTransfer = false;
 

@@ -21,7 +21,7 @@ const WalletSchema = new mongoose.Schema({
   createdAt: Date,
 });
 
-const walletCollection = mongoose.model('Wallets', WalletSchema);
+const walletCollection = mongoose.model<Objects.Wallet>('Wallets', WalletSchema);
 
 // Functions to communicate with the collection ID
 export default class DbWallets {
@@ -53,7 +53,7 @@ export default class DbWallets {
       createdAt: new Date().toISOString(),
     }).save();
 
-    return response as Objects.Wallet;
+    return response;
   };
 
   /** addChild
