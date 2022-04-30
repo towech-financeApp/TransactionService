@@ -175,7 +175,10 @@ export default class DbTransactions {
    *
    * @returns The updated transaction
    */
-  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<Responses.EditTransactionResponse> => {
+  static update = async (
+    old: Objects.Transaction,
+    contents: Objects.Transaction,
+  ): Promise<Responses.EditTransactionResponse> => {
     const finalChanges: any = contents;
     let unlinkTransfer = false;
 
