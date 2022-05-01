@@ -141,9 +141,12 @@ export default class DbTransactions {
    * @returns The transactions of the wallet
    */
   static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Objects.Transaction[]> => {
-    const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
+    const startDate = new Date(
+      Date.UTC(parseInt(dataMonth.substring(0, 4)), parseInt(dataMonth.substring(4, 6)) - 1, 1),
+    );
+    const endDate = new Date(Date.UTC(parseInt(dataMonth.substring(0, 4)), parseInt(dataMonth.substring(4, 6)), 1));
+
+    endDate.setSeconds(endDate.getSeconds() - 1);
 
     // Creates the filter that will be used
     const filter: mongoose.FilterQuery<any> = {
