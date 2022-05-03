@@ -7,8 +7,13 @@
 import mongoose from 'mongoose';
 mongoose.set('returnOriginal', false);
 
-import { Objects, Responses } from '../Models';
+import { Objects } from '../Models';
 import DbWallets from './dbWallets';
+
+interface editResponse {
+  old: Objects.Transaction[];
+  new: Objects.Transaction[];
+}
 
 const CategorySchema = new mongoose.Schema({
   parent_id: String,
@@ -62,13 +67,13 @@ export default class DbTransactions {
       transactionDate: transactionDate,
       category: category_id,
       excludeFromReport: excludeFromReport,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     }).save();
 
     await response.populate('category');
 
     // Also updates the amount value of the wallet
-    DbWallets.updateAmount(walletId, amount, response.category.type);
+    await DbWallets.updateAmount(walletId, amount, response.category.type);
 
     return response as Objects.Transaction;
   };
@@ -87,7 +92,7 @@ export default class DbTransactions {
       (await transactionCollection.findByIdAndDelete({ _id: transId }).populate('category')) ||
       ({} as Objects.Transaction);
 
-    DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
+    await DbWallets.updateAmount(response.wallet_id, response.amount * -1, response.category.type);
     changes.push(response);
 
     // If the deleted transaction is a transfer, deletes the partner transaction
@@ -96,7 +101,9 @@ export default class DbTransactions {
         (await transactionCollection.findByIdAndDelete({ _id: response.transfer_id }).populate('category')) ||
         ({} as Objects.Transaction);
 
-      DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
+      transfer.transactionDate = new Date(transfer.transactionDate);
+
+      await DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
       changes.push(transfer);
     }
 
@@ -136,9 +143,12 @@ export default class DbTransactions {
    * @returns The transactions of the wallet
    */
   static getAll = async (walletId: string, userId: string, dataMonth: string): Promise<Objects.Transaction[]> => {
-    const startDate = new Date(`${dataMonth.substr(0, 4)}-${dataMonth.substr(4, 2)}-1`);
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
+    const startDate = new Date(
+      Date.UTC(parseInt(dataMonth.substring(0, 4)), parseInt(dataMonth.substring(4, 6)) - 1, 1),
+    );
+    const endDate = new Date(Date.UTC(parseInt(dataMonth.substring(0, 4)), parseInt(dataMonth.substring(4, 6)), 1));
+
+    endDate.setSeconds(endDate.getSeconds() - 1);
 
     // Creates the filter that will be used
     const filter: mongoose.FilterQuery<any> = {
@@ -175,10 +185,7 @@ export default class DbTransactions {
    *
    * @returns The updated transaction
    */
-  static update = async (
-    old: Objects.Transaction,
-    contents: Objects.Transaction,
-  ): Promise<Responses.EditTransactionResponse> => {
+  static update = async (old: Objects.Transaction, contents: Objects.Transaction): Promise<editResponse> => {
     const finalChanges: any = contents;
     let unlinkTransfer = false;
 

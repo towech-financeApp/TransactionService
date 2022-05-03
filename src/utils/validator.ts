@@ -133,7 +133,7 @@ export default class Validator {
   static validateDate = (date: string): { valid: boolean; errors: any } => {
     const errors: any = {};
 
-    const formatRegex = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2]\d|3[0-1])$/;
+    const formatRegex = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[1-2]\d|3[0-1])/;
     if (!formatRegex.test(date)) {
       errors.date = 'The date must be in YYYY-MM-DD format';
     } else {

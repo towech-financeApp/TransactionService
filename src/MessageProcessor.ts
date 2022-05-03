@@ -4,7 +4,6 @@
  *
  * Class that handles all the valid types of message the service can receive
  */
-
 // Libraries
 import { AmqpMessage } from 'tow96-amqpwrapper';
 import logger from 'tow96-logger';
@@ -62,7 +61,7 @@ class TransactionProcessing {
    *
    * @returns The new transaction
    */
-  static add = async (message: Objects.Transaction): Promise<AmqpMessage<Objects.Transaction>> => {
+  static add = async (message: Objects.Transaction): Promise<AmqpMessage<Responses.ChangeTransactionResponse>> => {
     logger.http(`Add transaction to wallet: ${message.wallet_id}`);
 
     try {
@@ -91,6 +90,7 @@ class TransactionProcessing {
       // Sends an error response if there is any error
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
+      logger.debug(message.transactionDate);
       const response = await DbTransactions.add(
         message.user_id,
         message.wallet_id,
@@ -101,7 +101,15 @@ class TransactionProcessing {
         message.excludeFromReport,
       );
 
-      return new AmqpMessage(response, 'add-Transaction', 200);
+      // Fetches the updated wallets
+      const updatedWallet = await DbWallets.getById(validWallet.wallet._id);
+
+      const payload: Responses.ChangeTransactionResponse = {
+        newTransactions: [response],
+        wallets: [updatedWallet],
+      };
+
+      return new AmqpMessage(payload, 'add-Transaction', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -113,7 +121,7 @@ class TransactionProcessing {
    *
    * @returns The deleted transaction
    */
-  static delete = async (message: Objects.Transaction): Promise<AmqpMessage<Objects.Transaction[]>> => {
+  static delete = async (message: Objects.Transaction): Promise<AmqpMessage<Responses.ChangeTransactionResponse>> => {
     logger.http(`deleting transaction: ${message._id}`);
 
     try {
@@ -124,7 +132,16 @@ class TransactionProcessing {
       // Deletes the transaction
       const transactions = await DbTransactions.delete(transValid.transaction._id);
 
-      return new AmqpMessage(transactions, 'delete-transaction', 200);
+      // Fetches the updated wallets
+      const updatedWallets = await DbWallets.getWallets(transValid.transaction.user_id);
+
+      const payload: Responses.ChangeTransactionResponse = {
+        newTransactions: transactions,
+
+        wallets: updatedWallets,
+      };
+
+      return new AmqpMessage(payload, 'add-Transaction', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -136,7 +153,7 @@ class TransactionProcessing {
    *
    * @returns The edited transaction
    */
-  static edit = async (message: Objects.Transaction): Promise<AmqpMessage<Responses.EditTransactionResponse>> => {
+  static edit = async (message: Objects.Transaction): Promise<AmqpMessage<Responses.ChangeTransactionResponse>> => {
     logger.http(`Edit transaction: ${message._id}`);
 
     try {
@@ -189,11 +206,11 @@ class TransactionProcessing {
 
       // Checks for a different transaction Date
       if (message.transactionDate) {
-        const date = message.transactionDate as unknown;
-        if (transValid.transaction.transactionDate.toISOString().slice(0, 10) !== (date as string)) {
-          const validDate = Validator.validateDate(message.transactionDate.toISOString());
+        const date = new Date(message.transactionDate.toString());
+        if (transValid.transaction.transactionDate.toISOString().slice(0, 10) !== date.toISOString().slice(0, 10)) {
+          const validDate = Validator.validateDate(date.toISOString());
           errors = { ...errors, ...validDate.errors };
-          content.transactionDate = message.transactionDate;
+          content.transactionDate = date;
         }
       }
 
@@ -207,12 +224,21 @@ class TransactionProcessing {
 
       // If there aren't any changes, returns a 304 code
       if (Object.keys(content).length < 1)
-        return new AmqpMessage({} as Responses.EditTransactionResponse, 'edit-Transaction', 204);
+        return new AmqpMessage({} as Responses.ChangeTransactionResponse, 'edit-Transaction', 204);
 
       // Updates the transaction
       const updatedTransaction = await DbTransactions.update(transValid.transaction, content);
 
-      return new AmqpMessage(updatedTransaction, 'get-Transaction', 200);
+      // Fetches the updated wallets
+      const updatedWallets = await DbWallets.getWallets(transValid.transaction.user_id);
+
+      const payload: Responses.ChangeTransactionResponse = {
+        newTransactions: updatedTransaction.new,
+        oldTransactions: updatedTransaction.old,
+        wallets: updatedWallets,
+      };
+
+      return new AmqpMessage(payload, 'add-Transaction', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
@@ -475,7 +501,9 @@ class WalletProcessing {
    *
    * @returns The transaction pair
    */
-  static transfer = async (message: Requests.WorkerTransfer): Promise<AmqpMessage<Objects.Transaction[]>> => {
+  static transfer = async (
+    message: Requests.WorkerTransfer,
+  ): Promise<AmqpMessage<Responses.ChangeTransactionResponse>> => {
     logger.http(`Transfering from wallet: ${message.from_id} to wallet: ${message.to_id}`);
 
     try {
@@ -536,7 +564,15 @@ class WalletProcessing {
       const a = await DbTransactions.update(fromTransaction, { transfer_id: toTransaction._id } as Objects.Transaction);
       const b = await DbTransactions.update(toTransaction, { transfer_id: fromTransaction._id } as Objects.Transaction);
 
-      return new AmqpMessage([...a.new, ...b.new], 'get-Wallet', 200);
+      // Fetches the updated wallets
+      const updatedWallets = await DbWallets.getWallets(validFromWallet.wallet.user_id);
+
+      const payload: Responses.ChangeTransactionResponse = {
+        newTransactions: [...a.new, ...b.new],
+        wallets: updatedWallets,
+      };
+
+      return new AmqpMessage(payload, 'transfer-Wallet', 200);
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
