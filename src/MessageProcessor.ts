@@ -90,6 +90,7 @@ class TransactionProcessing {
       // Sends an error response if there is any error
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
+      logger.debug(message.transactionDate);
       const response = await DbTransactions.add(
         message.user_id,
         message.wallet_id,
@@ -205,11 +206,11 @@ class TransactionProcessing {
 
       // Checks for a different transaction Date
       if (message.transactionDate) {
-        const date = message.transactionDate as unknown;
-        if (transValid.transaction.transactionDate.toISOString().slice(0, 10) !== (date as string)) {
-          const validDate = Validator.validateDate(message.transactionDate.toISOString());
+        const date = new Date(message.transactionDate.toString());
+        if (transValid.transaction.transactionDate.toISOString().slice(0, 10) !== date.toISOString().slice(0, 10)) {
+          const validDate = Validator.validateDate(date.toISOString());
           errors = { ...errors, ...validDate.errors };
-          content.transactionDate = message.transactionDate;
+          content.transactionDate = date;
         }
       }
 

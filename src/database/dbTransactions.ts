@@ -67,7 +67,7 @@ export default class DbTransactions {
       transactionDate: transactionDate,
       category: category_id,
       excludeFromReport: excludeFromReport,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     }).save();
 
     await response.populate('category');
@@ -100,6 +100,8 @@ export default class DbTransactions {
       const transfer: Objects.Transaction =
         (await transactionCollection.findByIdAndDelete({ _id: response.transfer_id }).populate('category')) ||
         ({} as Objects.Transaction);
+
+      transfer.transactionDate = new Date(transfer.transactionDate);
 
       await DbWallets.updateAmount(transfer.wallet_id, transfer.amount * -1, transfer.category.type);
       changes.push(transfer);
