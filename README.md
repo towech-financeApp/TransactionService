@@ -49,7 +49,6 @@ necessary env variables for this service to work.
 
 ## Future_Improvements
 - [ ] Add loan/debt mechanics
-- [ ] Add parent/daughter wallets
 
 ## Credits
 - Jose Tow [[@Tow96](https://github.com/Tow96)]

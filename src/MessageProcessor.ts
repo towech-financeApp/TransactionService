@@ -101,12 +101,11 @@ class TransactionProcessing {
         message.excludeFromReport,
       );
 
-      // Fetches the updated wallets
-      const updatedWallet = await DbWallets.getById(validWallet.wallet._id);
+      const updatedWallets = await DbWallets.getWallets(validWallet.wallet.user_id);
 
       const payload: Responses.ChangeTransactionResponse = {
         newTransactions: [response],
-        wallets: [updatedWallet],
+        wallets: updatedWallets,
       };
 
       return new AmqpMessage(payload, 'add-Transaction', 200);
@@ -367,7 +366,6 @@ class WalletProcessing {
       }
 
       return new AmqpMessage(newWallet, 'add-Wallet', 200);
-      // return new AmqpMessage({ t: "test" }, "addWallet", 200)
     } catch (e) {
       return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }

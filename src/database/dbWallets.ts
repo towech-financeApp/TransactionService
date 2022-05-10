@@ -75,17 +75,25 @@ export default class DbWallets {
    * @returns The deleted transaction as confirmation
    */
   static delete = async (walletId: string): Promise<Objects.Wallet> => {
-    // TODO: Convert transactions that aren't transfers from family to the parent
+    // Convert transactions that aren't transfers from family to the parent
+    await DbTransactions.migrateToParent(walletId);
+
+    // Gets the wallet
+    const wallet = await DbWallets.getById(walletId);
 
     // Delete child transactions and wallets
-    const childWallets = await walletCollection.find({ parent_id: walletId });
-    childWallets.map(async (w: Objects.Wallet) => {
+    wallet.child_id?.map(async (w: Objects.Wallet) => {
       await DbTransactions.deleteAll(w._id);
-      await walletCollection.findByIdAndDelete(w._id);
+      walletCollection.findByIdAndDelete(w._id);
     });
 
     // Deletes the transactions
     await DbTransactions.deleteAll(walletId);
+
+    // Unlinks the wallet from it's parent
+    if (wallet.parent_id !== null && wallet.parent_id !== undefined) {
+      DbWallets.removeChild(wallet.parent_id, wallet._id);
+    }
 
     // Deletes the wallet
     const deletedWallet = await walletCollection.findByIdAndDelete(walletId);
@@ -140,6 +148,17 @@ export default class DbWallets {
     return response as Objects.Wallet[];
   };
 
+  /** removeChild
+   * Removes a subwallet from a wallet
+   *
+   * @param {string} parent_id
+   * @param {string} child_id
+   *
+   */
+  static removeChild = async (parent_id: string, child_id: string): Promise<void> => {
+    await walletCollection.findByIdAndUpdate(parent_id, { $pull: { child_id: child_id } });
+  };
+
   /** update
    * Updates the contents of the given wallet.
    *
@@ -153,13 +172,15 @@ export default class DbWallets {
     const cleanedWallet: any = content;
     cleanedWallet.money = undefined;
 
-    const response = await walletCollection.findByIdAndUpdate(
-      wallet_Id,
-      {
-        $set: { ...cleanedWallet },
-      },
-      { new: true },
-    );
+    const response = await walletCollection
+      .findByIdAndUpdate(
+        wallet_Id,
+        {
+          $set: { ...cleanedWallet },
+        },
+        { new: true },
+      )
+      .populate('child_id');
 
     return response as Objects.Wallet;
   };
@@ -171,8 +192,20 @@ export default class DbWallets {
    * @param {number} amount number that will be added to the wallet
    *
    */
-  static updateAmount = async (walletId: string, amount: number, type: 'Income' | 'Expense'): Promise<void> => {
+  static updateAmount = async (
+    walletId: string,
+    amount: number,
+    type: 'Income' | 'Expense',
+    unlinked = false,
+  ): Promise<void> => {
     const value = type == 'Income' ? amount : amount * -1;
-    await walletCollection.findOneAndUpdate({ _id: walletId }, { $inc: { money: value } });
+
+    // Updates the wallet
+    const updatedWallet = await walletCollection.findOneAndUpdate({ _id: walletId }, { $inc: { money: value } });
+
+    // If the wallet has a parent, also updates its amount
+    if (updatedWallet?.parent_id !== null && updatedWallet?.parent_id !== undefined && !unlinked) {
+      await walletCollection.findByIdAndUpdate({ _id: updatedWallet?.parent_id }, { $inc: { money: value } });
+    }
   };
 }
