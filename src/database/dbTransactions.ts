@@ -162,6 +162,8 @@ export default class DbTransactions {
 
     const response = await transactionCollection.find(filter).populate('category');
 
+    // TODO: Fetch transactions of child wallets when icons for wallets are done
+
     return response as Objects.Transaction[];
   };
 
@@ -175,6 +177,30 @@ export default class DbTransactions {
   static getCategory = async (category_id: string): Promise<Objects.Category> => {
     const response = await categoryCollection.findById(category_id);
     return response as Objects.Category;
+  };
+
+  /** migrateToParent
+   * Moves all the transactions of a wallet to its parent.
+   * The money on the parent doesn't need to be updated as the wallets are already linked.
+   *
+   * @param {string} id the wallet that'll be emptied
+   *
+   * @returns The updated transaction
+   */
+  static migrateToParent = async (id: string): Promise<void> => {
+    // Gets the wallet
+    const wallet = await DbWallets.getById(id);
+
+    // If the wallet doesn't have a parent, finishes
+    if (wallet.parent_id === null || wallet.parent_id === undefined) return;
+
+    // Moves all transactions to it's parent
+    await transactionCollection.updateMany({ wallet_id: id }, { $set: { wallet_id: wallet.parent_id } });
+
+    // Sets the wallet amount to zero
+    await DbWallets.updateAmount(id, wallet.money || 0, 'Expense', true);
+
+    // TODO: Remove transfers between the wallets
   };
 
   /** update
