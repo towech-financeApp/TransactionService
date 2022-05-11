@@ -138,9 +138,9 @@ export default class DbWallets {
     const filter: mongoose.FilterQuery<any> = {
       $and: [
         { user_id: userId },
-        {
-          $or: [{ parent_id: { $exists: false } }, { parent_id: { $exists: true, $in: [null] } }],
-        },
+        // {
+        //   $or: [{ parent_id: { $exists: false } }, { parent_id: { $exists: true, $in: [null] } }],
+        // },
       ],
     };
     const response = await walletCollection.find(filter).populate('child_id');
