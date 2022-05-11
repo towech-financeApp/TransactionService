@@ -29,7 +29,7 @@ export default class Validator {
     if (isNaN(amountNum)) {
       errors.amount = 'Amount is not a number';
     }
-    const rounded = Math.round((amountNum + Number.EPSILON) * 100) / 100;
+    const rounded = Math.round((amountNum + Number.EPSILON) * 100);
 
     return {
       errors,
