@@ -158,11 +158,19 @@ export default class DbTransactions {
         $lt: endDate.toISOString(),
       },
     };
-    if (walletId !== '-1') filter.wallet_id = walletId;
+
+    // If a wallet was provided, fetches the subwallets's transactions
+    if (walletId !== '-1') {
+      const wallet = await DbWallets.getById(walletId);
+
+      const lookup = [wallet._id, ...(wallet.child_id || [])];
+
+      filter.wallet_id = {
+        $in: lookup,
+      };
+    }
 
     const response = await transactionCollection.find(filter).populate('category');
-
-    // TODO: Fetch transactions of child wallets when icons for wallets are done
 
     return response as Objects.Transaction[];
   };
