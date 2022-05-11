@@ -544,7 +544,7 @@ class WalletProcessing {
         amountValidation.rounded,
         message.transactionDate,
         WalletProcessing.otherCategoryId_Out,
-        validToWallet.wallet.parent_id === validFromWallet.wallet._id,
+        validToWallet.wallet.parent_id?.toString() === validFromWallet.wallet._id.toString(),
       );
 
       // To transaction
@@ -555,7 +555,7 @@ class WalletProcessing {
         amountValidation.rounded,
         message.transactionDate,
         WalletProcessing.otherCategoryId_In,
-        validFromWallet.wallet.parent_id === validToWallet.wallet._id,
+        validFromWallet.wallet.parent_id?.toString() === validToWallet.wallet._id.toString(),
       );
 
       // Updates the transaction pair to include the id of the other
