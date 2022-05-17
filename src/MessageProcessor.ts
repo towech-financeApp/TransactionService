@@ -536,34 +536,37 @@ class WalletProcessing {
       // Sends an error response if there is any error
       if (Object.keys(errors).length > 0) return AmqpMessage.errorMessage('Invalid Fields', 422, errors);
 
-      // From transaction
-      const fromTransaction = await DbTransactions.add(
-        message.user_id,
-        message.from_id,
-        message.concept,
-        amountValidation.rounded,
-        message.transactionDate,
-        WalletProcessing.otherCategoryId_Out,
-        validToWallet.wallet.parent_id?.toString() === validFromWallet.wallet._id.toString(),
-      );
+      const [fromTransaction, toTransaction] = await Promise.all([
+        // From transaction
+        DbTransactions.add(
+          message.user_id,
+          message.from_id,
+          message.concept,
+          amountValidation.rounded,
+          message.transactionDate,
+          WalletProcessing.otherCategoryId_Out,
+          validToWallet.wallet.parent_id?.toString() === validFromWallet.wallet._id.toString(),
+        ),
+        // To transaction
+        DbTransactions.add(
+          message.user_id,
+          message.to_id,
+          message.concept,
+          amountValidation.rounded,
+          message.transactionDate,
+          WalletProcessing.otherCategoryId_In,
+          validFromWallet.wallet.parent_id?.toString() === validToWallet.wallet._id.toString(),
+        ),
+      ]);
 
-      // To transaction
-      const toTransaction = await DbTransactions.add(
-        message.user_id,
-        message.to_id,
-        message.concept,
-        amountValidation.rounded,
-        message.transactionDate,
-        WalletProcessing.otherCategoryId_In,
-        validFromWallet.wallet.parent_id?.toString() === validToWallet.wallet._id.toString(),
-      );
+      // Fetches the updated wallets before updating the transferid's, this is done to avoid 'still writing' errors
+      const updatedWallets = await DbWallets.getWallets(validFromWallet.wallet.user_id);
 
       // Updates the transaction pair to include the id of the other
-      const a = await DbTransactions.update(fromTransaction, { transfer_id: toTransaction._id } as Objects.Transaction);
-      const b = await DbTransactions.update(toTransaction, { transfer_id: fromTransaction._id } as Objects.Transaction);
-
-      // Fetches the updated wallets
-      const updatedWallets = await DbWallets.getWallets(validFromWallet.wallet.user_id);
+      const [a, b] = await Promise.all([
+        DbTransactions.update(fromTransaction, { transfer_id: toTransaction._id } as Objects.Transaction),
+        DbTransactions.update(toTransaction, { transfer_id: fromTransaction._id } as Objects.Transaction),
+      ]);
 
       const payload: Responses.ChangeTransactionResponse = {
         newTransactions: [...a.new, ...b.new],
