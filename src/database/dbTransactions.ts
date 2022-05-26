@@ -226,7 +226,7 @@ export default class DbTransactions {
     const oldTransactions = [];
     const newTransactions = [];
 
-    // If the changed transaction is a transfer, the category can't be changed, it also sends the changes to the other transaction
+    // If the changed transaction is a transfer, neither the category nor the wallet_id can be changed, it also sends the changes to the other transaction
     if (old.transfer_id) {
       const transfer = await DbTransactions.getById(old.transfer_id);
 
@@ -235,6 +235,7 @@ export default class DbTransactions {
         unlinkTransfer = true;
       } else {
         finalChanges.category = undefined;
+        finalChanges.wallet_id = undefined;
         const nuTransfer: Objects.Transaction =
           (await transactionCollection
             .findByIdAndUpdate(transfer._id, { $set: { ...finalChanges } })
