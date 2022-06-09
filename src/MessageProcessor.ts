@@ -25,6 +25,8 @@ export default class MessageProcessor {
 
     // Switches the message type to run the appropriate function
     switch (type) {
+      case 'delete-User':
+        return await MessageProcessor.deleteUser(payload);
       case 'add-Transaction':
         return await TransactionProcessing.add(payload);
       case 'delete-Transaction':
@@ -50,6 +52,23 @@ export default class MessageProcessor {
       default:
         logger.debug(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
+    }
+  };
+
+  /** deleteUser
+   * deletes a transaction from the database
+   * @param {Objects.User.BaseUser} user
+   */
+  static deleteUser = async (message: Objects.User.BaseUser): Promise<AmqpMessage<null>> => {
+    logger.http(`deleting all transactions and users for: ${message._id}`);
+
+    try {
+      await DbTransactions.deleteUser(message._id);
+      await DbWallets.deleteUser(message._id);
+
+      return new AmqpMessage(null, 'add-Transaction', 200);
+    } catch (e) {
+      return AmqpMessage.errorMessage(`Unexpected error`, 500, e);
     }
   };
 }
