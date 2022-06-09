@@ -101,6 +101,15 @@ export default class DbWallets {
     return deletedWallet as Objects.Wallet;
   };
 
+  /** deleteUser
+   * Deletes all the wallets of a user
+   *
+   * @param {string} userId
+   */
+  static deleteUser = async (userId: string): Promise<void> => {
+    await walletCollection.deleteMany({ user_id: userId });
+  };
+
   /** getByName
    * Returns a wallet if the name and userId match
    *

@@ -114,11 +114,18 @@ export default class DbTransactions {
    * Deletes all the transactions of a wallet
    *
    * @param {string} walletId
-   *
-   * @returns The deleted transaction as confirmation
    */
   static deleteAll = async (walletId: string): Promise<void> => {
     await transactionCollection.deleteMany({ wallet_id: walletId });
+  };
+
+  /** deleteUser
+   * Deletes all the transactions of a user
+   *
+   * @param {string} userId
+   */
+  static deleteUser = async (userId: string): Promise<void> => {
+    await transactionCollection.deleteMany({ user_id: userId });
   };
 
   /** getById
