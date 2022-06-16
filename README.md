@@ -47,8 +47,5 @@ the recursive git submodules to the buildpacks.
 The repository has an [example environment](/env.sample) which contains all the 
 necessary env variables for this service to work.
 
-## Future_Improvements
-- [ ] Add loan/debt mechanics
-
 ## Credits
 - Jose Tow [[@Tow96](https://github.com/Tow96)]

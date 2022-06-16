@@ -214,8 +214,6 @@ export default class DbTransactions {
 
     // Sets the wallet amount to zero
     await DbWallets.updateAmount(id, wallet.money || 0, 'Expense', true);
-
-    // TODO: Remove transfers between the wallets
   };
 
   /** update
