@@ -55,6 +55,9 @@ class TransactionService {
     // Begins to listen for messages on the queue
     logger.info(`Listening for messages on queue ${this.queueName}`);
 
+    // Starts the messageProcessor
+    const messageProcessor = new MessageProcessor();
+
     // Using the channel cosume, the program enters a loop that will check continously
     channel.consume(
       this.queueName,
@@ -64,7 +67,7 @@ class TransactionService {
         // Handles the message
         try {
           // Processes the message
-          const content = await MessageProcessor.process(JSON.parse(msg.content.toString()));
+          const content = await messageProcessor.process(JSON.parse(msg.content.toString()));
 
           // reply if necessary
           if (msg.properties.replyTo)
