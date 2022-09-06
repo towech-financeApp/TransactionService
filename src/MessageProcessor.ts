@@ -19,7 +19,12 @@ import DbTransactions from './database/dbTransactions';
 import DbWallets from './database/dbWallets';
 
 export default class MessageProcessor {
-  static process = async (message: AmqpMessage): Promise<AmqpMessage<any>> => {
+  private walletProcessing = new WalletProcessing();
+  constructor() {
+    this.walletProcessing.getBasicCategories();
+  }
+
+  process = async (message: AmqpMessage): Promise<AmqpMessage<any>> => {
     // Destructures the message
     const { type, payload } = message;
 
@@ -38,17 +43,17 @@ export default class MessageProcessor {
       case 'get-Transactions':
         return await TransactionProcessing.getAll(payload);
       case 'add-Wallet':
-        return await WalletProcessing.add(payload);
+        return await this.walletProcessing.add(payload);
       case 'delete-Wallet':
-        return await WalletProcessing.delete(payload);
+        return await this.walletProcessing.delete(payload);
       case 'edit-Wallet':
-        return await WalletProcessing.edit(payload);
+        return await this.walletProcessing.edit(payload);
       case 'get-Wallet':
-        return await WalletProcessing.getById(payload);
+        return await this.walletProcessing.getById(payload);
       case 'get-Wallets':
-        return await WalletProcessing.getAll(payload);
+        return await this.walletProcessing.getAll(payload);
       case 'transfer-Wallet':
-        return await WalletProcessing.transfer(payload);
+        return await this.walletProcessing.transfer(payload);
       default:
         logger.debug(`Unsupported function type: ${type}`);
         return AmqpMessage.errorMessage(`Unsupported function type: ${type}`);
@@ -319,8 +324,15 @@ class TransactionProcessing {
 }
 
 class WalletProcessing {
-  private static otherCategoryId_In = process.env.OTHER_CATEGORYID || '';
-  private static otherCategoryId_Out = process.env.OTHER_CATEGORYID_OUT || '';
+  private otherCategoryId_In = '';
+  private otherCategoryId_Out = '';
+
+  getBasicCategories = async (): Promise<void> => {
+    const catId = await DbTransactions.getBasicCategories();
+    logger.info('Fetched basic categories');
+    this.otherCategoryId_In = catId.in;
+    this.otherCategoryId_Out = catId.out
+  }
 
   /** add
    * Adds a wallet to the database
@@ -328,7 +340,7 @@ class WalletProcessing {
    *
    * @returns The new wallet
    */
-  static add = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
+  add = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Adding wallet for user ${message.user_id}`);
 
     try {
@@ -377,7 +389,7 @@ class WalletProcessing {
           'Initial transaction',
           amountValidation.rounded,
           newWallet.createdAt,
-          WalletProcessing.otherCategoryId_In,
+          this.otherCategoryId_In,
         );
 
         // Updates the wallet info that will be sent (it's already updated in the DB)
@@ -396,7 +408,7 @@ class WalletProcessing {
    *
    * @returns The deleted wallet
    */
-  static delete = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
+  delete = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Deleting wallet ${message._id}`);
 
     try {
@@ -419,7 +431,7 @@ class WalletProcessing {
    *
    * @returns The edited wallet
    */
-  static edit = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
+  edit = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Editing wallet: ${message._id}`);
 
     try {
@@ -480,7 +492,7 @@ class WalletProcessing {
    *
    * @returns An array containing the wallets
    */
-  static getAll = async (message: Objects.User.BaseUser): Promise<AmqpMessage<Objects.Wallet[]>> => {
+  getAll = async (message: Objects.User.BaseUser): Promise<AmqpMessage<Objects.Wallet[]>> => {
     logger.http(`Get all wallets of user: ${message._id}`);
 
     try {
@@ -498,7 +510,7 @@ class WalletProcessing {
    *
    * @returns The requested wallet
    */
-  static getById = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
+  getById = async (message: Objects.Wallet): Promise<AmqpMessage<Objects.Wallet>> => {
     logger.http(`Get wallet: ${message._id}`);
 
     try {
@@ -518,7 +530,7 @@ class WalletProcessing {
    *
    * @returns The transaction pair
    */
-  static transfer = async (
+  transfer = async (
     message: Requests.WorkerTransfer,
   ): Promise<AmqpMessage<Responses.ChangeTransactionResponse>> => {
     logger.http(`Transfering from wallet: ${message.from_id} to wallet: ${message.to_id}`);
@@ -563,7 +575,7 @@ class WalletProcessing {
           message.concept,
           amountValidation.rounded,
           message.transactionDate,
-          WalletProcessing.otherCategoryId_Out,
+          this.otherCategoryId_Out,
           validToWallet.wallet.parent_id?.toString() === validFromWallet.wallet._id.toString(),
         ),
         // To transaction
@@ -573,7 +585,7 @@ class WalletProcessing {
           message.concept,
           amountValidation.rounded,
           message.transactionDate,
-          WalletProcessing.otherCategoryId_In,
+          this.otherCategoryId_In,
           validFromWallet.wallet.parent_id?.toString() === validToWallet.wallet._id.toString(),
         ),
       ]);

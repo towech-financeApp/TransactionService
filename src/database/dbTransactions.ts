@@ -5,6 +5,7 @@
  * Schema that describes the Transaction Schema and functions that use it
  */
 import mongoose from 'mongoose';
+import logger from 'tow96-logger';
 mongoose.set('returnOriginal', false);
 
 import { Objects } from '../Models';
@@ -194,6 +195,51 @@ export default class DbTransactions {
     return response as Objects.Category;
   };
 
+  static getBasicCategories = async (): Promise<{ in: string; out: string }> => {
+    const output = { in: '', out: '' };
+
+    const otherIn: Objects.Category | null = await categoryCollection.findOne({
+      parent_id: '-1',
+      user_id: '-1',
+      name: 'Other',
+      type: 'Income',
+    });
+    const otherOut: Objects.Category | null = await categoryCollection.findOne({
+      parent_id: '-1',
+      user_id: '-1',
+      name: 'Other',
+      type: 'Expense',
+    });
+
+    if (otherIn === null) {
+      const nuCat = await new categoryCollection({
+        parent_id: '-1',
+        user_id: '-1',
+        name: 'Other',
+        type: 'Income',
+      }).save();
+      output.in = nuCat._id;
+      logger.info(`Inserted income category`);
+    } else {
+      output.in = otherIn._id;
+    }
+
+    if (otherOut === null) {
+      const nuCat = await new categoryCollection({
+        parent_id: '-1',
+        user_id: '-1',
+        name: 'Other',
+        type: 'Expense',
+      }).save();
+      output.out = nuCat._id;
+      logger.info(`Inserted expense category`);
+    } else {
+      output.out = otherOut._id;
+    }
+
+    return output;
+  };
+
   /** migrateToParent
    * Moves all the transactions of a wallet to its parent.
    * The money on the parent doesn't need to be updated as the wallets are already linked.
@@ -214,8 +260,6 @@ export default class DbTransactions {
 
     // Sets the wallet amount to zero
     await DbWallets.updateAmount(id, wallet.money || 0, 'Expense', true);
-
-    // TODO: Remove transfers between the wallets
   };
 
   /** update
